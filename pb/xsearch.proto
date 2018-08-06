@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package xsearchpb;
+
+message Token {
+    string term = 1;
+}
+
+message Query {
+    string raw = 1;
+    repeated Token tokens = 2;
+}
+
+message Document {
+    uint64 ID = 1;
+    string raw = 2;
+    repeated Token tokens = 3;
+    float SimNetScore = 4;
+    float BM25Score = 5;
+}
