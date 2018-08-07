@@ -8,12 +8,12 @@ import (
 	"github.com/tddhit/box/transport"
 	"github.com/tddhit/tools/log"
 	. "github.com/tddhit/xsearch/searchd/conf"
+	"github.com/tddhit/xsearch/searchd/searchdpb"
 	"github.com/tddhit/xsearch/searchd/service"
-	pb "github.com/tddhit/xsearch/searchd/pb"
 )
 
 var (
-	confPath   string
+	confPath string
 	grpcAddr string
 )
 
@@ -25,31 +25,24 @@ func init() {
 
 func main() {
 	var (
-		conf  	Conf
-		err 	error
-		svc interface{}
+		conf Conf
+		err  error
+		svc  interface{}
 	)
 	NewConf(confPath, &conf)
 	log.Init(conf.LogPath, conf.LogLevel)
-	if mw.IsWorker() { 
+	if mw.IsWorker() {
 		svc = service.NewService()
 	}
 
-	
 	// new GRPC Server
 	grpcServer, err := transport.Listen(grpcAddr)
 	if err != nil {
 		log.Fatal(err)
 	}
-	if mw.IsWorker() { 
-		grpcServer.Register(pb.SearchdGrpcServiceDesc, svc)
+	if mw.IsWorker() {
+		grpcServer.Register(searchdpb.SearchdGrpcServiceDesc, svc)
 	}
-	
-
-
-	
-
-	
 
 	// run with master-worker
 	mw.Run(mw.WithServer(grpcServer))

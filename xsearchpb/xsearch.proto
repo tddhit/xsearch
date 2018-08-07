@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package xsearchpb;
 
+option go_package = "xsearchpb";
+
 message Token {
     string term = 1;
 }
@@ -15,6 +17,6 @@ message Document {
     uint64 ID = 1;
     string raw = 2;
     repeated Token tokens = 3;
-    float SimNetScore = 4;
-    float BM25Score = 5;
+    float BM25Score = 4;
+    float SimNetScore = 5;
 }

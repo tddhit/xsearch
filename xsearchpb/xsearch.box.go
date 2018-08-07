@@ -29,7 +29,7 @@ func (m *Token) Reset()         { *m = Token{} }
 func (m *Token) String() string { return proto.CompactTextString(m) }
 func (*Token) ProtoMessage()    {}
 func (*Token) Descriptor() ([]byte, []int) {
-	return fileDescriptor_xsearch_9b03ba14c980b07e, []int{0}
+	return fileDescriptor_xsearch_60efc539be452cd1, []int{0}
 }
 func (m *Token) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Token.Unmarshal(m, b)
@@ -68,7 +68,7 @@ func (m *Query) Reset()         { *m = Query{} }
 func (m *Query) String() string { return proto.CompactTextString(m) }
 func (*Query) ProtoMessage()    {}
 func (*Query) Descriptor() ([]byte, []int) {
-	return fileDescriptor_xsearch_9b03ba14c980b07e, []int{1}
+	return fileDescriptor_xsearch_60efc539be452cd1, []int{1}
 }
 func (m *Query) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Query.Unmarshal(m, b)
@@ -106,8 +106,8 @@ type Document struct {
 	ID                   uint64   `protobuf:"varint,1,opt,name=ID,proto3" json:"ID,omitempty"`
 	Raw                  string   `protobuf:"bytes,2,opt,name=raw,proto3" json:"raw,omitempty"`
 	Tokens               []*Token `protobuf:"bytes,3,rep,name=tokens,proto3" json:"tokens,omitempty"`
-	SimNetScore          float32  `protobuf:"fixed32,4,opt,name=SimNetScore,proto3" json:"SimNetScore,omitempty"`
-	BM25Score            float32  `protobuf:"fixed32,5,opt,name=BM25Score,proto3" json:"BM25Score,omitempty"`
+	BM25Score            float32  `protobuf:"fixed32,4,opt,name=BM25Score,proto3" json:"BM25Score,omitempty"`
+	SimNetScore          float32  `protobuf:"fixed32,5,opt,name=SimNetScore,proto3" json:"SimNetScore,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -117,7 +117,7 @@ func (m *Document) Reset()         { *m = Document{} }
 func (m *Document) String() string { return proto.CompactTextString(m) }
 func (*Document) ProtoMessage()    {}
 func (*Document) Descriptor() ([]byte, []int) {
-	return fileDescriptor_xsearch_9b03ba14c980b07e, []int{2}
+	return fileDescriptor_xsearch_60efc539be452cd1, []int{2}
 }
 func (m *Document) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Document.Unmarshal(m, b)
@@ -158,16 +158,16 @@ func (m *Document) GetTokens() []*Token {
 	return nil
 }
 
-func (m *Document) GetSimNetScore() float32 {
+func (m *Document) GetBM25Score() float32 {
 	if m != nil {
-		return m.SimNetScore
+		return m.BM25Score
 	}
 	return 0
 }
 
-func (m *Document) GetBM25Score() float32 {
+func (m *Document) GetSimNetScore() float32 {
 	if m != nil {
-		return m.BM25Score
+		return m.SimNetScore
 	}
 	return 0
 }
@@ -178,9 +178,9 @@ func init() {
 	proto.RegisterType((*Document)(nil), "xsearchpb.Document")
 }
 
-func init() { proto.RegisterFile("xsearch.proto", fileDescriptor_xsearch_9b03ba14c980b07e) }
+func init() { proto.RegisterFile("xsearch.proto", fileDescriptor_xsearch_60efc539be452cd1) }
 
-var fileDescriptor_xsearch_9b03ba14c980b07e = []byte{
+var fileDescriptor_xsearch_60efc539be452cd1 = []byte{
 	// 194 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xe2, 0xad, 0x28, 0x4e, 0x4d,
 	0x2c, 0x4a, 0xce, 0xd0, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0xe2, 0x84, 0x72, 0x0b, 0x92, 0x94,
@@ -190,9 +190,9 @@ var fileDescriptor_xsearch_9b03ba14c980b07e = []byte{
 	0x56, 0x02, 0xd2, 0x57, 0x2c, 0xc1, 0xa4, 0xc0, 0xac, 0xc1, 0x6d, 0x24, 0xa0, 0x07, 0x37, 0x53,
 	0x0f, 0x6c, 0x60, 0x10, 0x54, 0x5e, 0x69, 0x1a, 0x23, 0x17, 0x87, 0x4b, 0x7e, 0x72, 0x69, 0x6e,
 	0x6a, 0x5e, 0x89, 0x10, 0x1f, 0x17, 0x93, 0xa7, 0x0b, 0xd8, 0x1c, 0x96, 0x20, 0x26, 0x4f, 0x17,
-	0x98, 0xc1, 0x4c, 0xd8, 0x0c, 0x66, 0xc6, 0x6f, 0xb0, 0x90, 0x02, 0x17, 0x77, 0x70, 0x66, 0xae,
-	0x5f, 0x6a, 0x49, 0x70, 0x72, 0x7e, 0x51, 0xaa, 0x04, 0x8b, 0x02, 0xa3, 0x06, 0x53, 0x10, 0xb2,
-	0x90, 0x90, 0x0c, 0x17, 0xa7, 0x93, 0xaf, 0x91, 0x29, 0x44, 0x9e, 0x15, 0x2c, 0x8f, 0x10, 0x48,
-	0x62, 0x03, 0x07, 0x86, 0x31, 0x20, 0x00, 0x00, 0xff, 0xff, 0x1f, 0xd5, 0x7e, 0x88, 0x1d, 0x01,
+	0x98, 0xc1, 0x4c, 0xd8, 0x0c, 0x66, 0xc6, 0x6f, 0xb0, 0x90, 0x0c, 0x17, 0xa7, 0x93, 0xaf, 0x91,
+	0x69, 0x70, 0x72, 0x7e, 0x51, 0xaa, 0x04, 0x8b, 0x02, 0xa3, 0x06, 0x53, 0x10, 0x42, 0x40, 0x48,
+	0x81, 0x8b, 0x3b, 0x38, 0x33, 0xd7, 0x2f, 0xb5, 0x04, 0x22, 0xcf, 0x0a, 0x96, 0x47, 0x16, 0x4a,
+	0x62, 0x03, 0x07, 0x86, 0x31, 0x20, 0x00, 0x00, 0xff, 0xff, 0xac, 0x26, 0x19, 0xb9, 0x1d, 0x01,
 	0x00, 0x00,
 }

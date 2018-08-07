@@ -2,11 +2,13 @@ syntax = "proto3";
 
 package searchdpb;
 
-import "xsearch/pb/xsearch.proto";
+option go_package = "searchdpb";
+
+import "xsearch/xsearchpb/xsearch.proto";
 
 service Searchd {
     rpc AddDoc (AddDocRequest) returns (AddDocReply) {}
-    rpc DeleteDoc (DeleteDocRequest) returns (DeleteDocReply) {}
+    rpc RemoveDoc (RemoveDocRequest) returns (RemoveDocReply) {}
     rpc Search (SearchRequest) returns (SearchReply) {}
 }
 
@@ -17,15 +19,17 @@ message AddDocRequest {
 message AddDocReply {
 }
 
-message DeleteDocRequest {
+message RemoveDocRequest {
     xsearchpb.Document doc = 1;
 }
 
-message DeleteDocReply {
+message RemoveDocReply {
 }
 
 message SearchRequest {
     xsearchpb.Query query = 1;
+    uint64 start = 2;
+    int32 count = 3;
 }
 
 message SearchReply {

@@ -3,8 +3,11 @@ package service
 import (
 	"context"
 
-	"github.com/tddhit/hunter/builder"
-	pb "github.com/tddhit/xsearch/searchd/pb"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
+	"github.com/tddhit/xsearch/searchd/engine"
+	"github.com/tddhit/xsearch/searchd/searchdpb"
 )
 
 type service struct {
@@ -19,17 +22,33 @@ func NewService() *service {
 }
 
 func (s *service) AddDoc(ctx context.Context,
-	in *pb.AddDocRequest) (*pb.AddDocReply, error) {
+	in *searchdpb.AddDocRequest) (*searchdpb.AddDocReply, error) {
 
-	s.engine.AddDoc(in.GetDoc())
+	err := s.engine.AddDoc(in.GetDoc())
+	if err != nil {
+		return nil, status.Error(codes.Unavailable, err.Error())
+	}
+	return nil, nil
 }
 
-func (s *service) DeleteDoc(ctx context.Context,
-	in *pb.DeleteDocRequest) (*pb.DeleteDocReply, error) {
+func (s *service) RemoveDoc(ctx context.Context,
+	in *searchdpb.RemoveDocRequest) (*searchdpb.RemoveDocReply, error) {
 
+	err := s.engine.RemoveDoc(in.GetDoc())
+	if err != nil {
+		return nil, status.Error(codes.Unavailable, err.Error())
+	}
+	return nil, nil
 }
 
 func (s *service) Search(ctx context.Context,
-	in *pb.SearchRequest) (*pb.SearchReply, error) {
+	in *searchdpb.SearchRequest) (*searchdpb.SearchReply, error) {
 
+	docs, err := s.engine.Search(in.GetQuery(), in.GetStart(), in.GetCount())
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &searchdpb.SearchReply{
+		Docs: docs,
+	}, nil
 }
