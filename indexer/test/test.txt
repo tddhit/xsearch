@@ -1,0 +1,10 @@
+如何为Linux安装Go语言
+第一步要下载go的开发工具包
+Linux下两个文件可以配置
+是由Google 最初开发的一种开源编程语言
+Go 语言支持以下系统
+基于Debian的发行版本
+Go提供了方便的安装包
+可根据自己的系统位数下载好相应的安装包
+Go 语言又称为golang
+支持Windows、Linux、Mac等系统

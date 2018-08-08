@@ -1,33 +1,27 @@
 package segment
 
 import (
-	"bytes"
 	"container/heap"
 	"container/list"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"math"
-	"math/rand"
-	"os"
+	"strings"
 	"sync"
-	"syscall"
-	"time"
-	"unsafe"
+	"sync/atomic"
 
 	"github.com/tddhit/bindex"
 	"github.com/tddhit/tools/log"
+	"github.com/tddhit/tools/mmap"
 	"github.com/tddhit/xsearch/internal/types"
 	"github.com/tddhit/xsearch/xsearchpb"
 )
 
 const (
-	TimeFormat                 = "2006/01/02"
-	maxMapSize                 = 1 << 37
-	commitDocsNumber           = 100000           // generate a segment per 100k docs
-	commitTimeInterval         = 10 * time.Second // generate a segment per 10s
-	BM25_K1            float32 = 1.2
-	BM25_B             float32 = 0.75
+	TimeFormat         = "2006/01/02"
+	maxMapSize         = 1 << 37
+	BM25_K1    float32 = 1.2
+	BM25_B     float32 = 0.75
 )
 
 var (
@@ -37,50 +31,43 @@ var (
 
 func init() {
 	pool.New = func() interface{} {
-		buf := make([]byte, 8)
-		return buf
+		b := make([]byte, 8)
+		return b
 	}
 }
 
 type Segment struct {
+	mu           sync.RWMutex
 	NumDocs      uint64
 	avgDocLength uint32
+	name         string
 	docLength    map[uint64]uint32
 	invertList   map[string]*list.List
 	vocab        *bindex.BIndex
-	invertFile   *os.File
-	invertRef    []byte
+	invert       *mmap.MmapFile
+	persist      int32
 }
 
-func New(vocabPath, invertPath string, readOnly bool) *Segment {
-	vocab, err := bindex.New(vocabPath, readOnly)
+func New(vocabPath, invertPath string, mode int) *Segment {
+	vocab, err := bindex.New(vocabPath, mode)
 	if err != nil {
 		log.Fatal(err)
 	}
-	var flag int
-	if readOnly {
-		flag = os.O_RDONLY
-	} else {
-		flag = os.O_CREATE | os.O_RDWR | os.O_APPEND
-	}
-	invertFile, err := os.OpenFile(invertPath, flag, 0644)
+	invert, err := mmap.New(invertPath, maxMapSize, mode)
 	if err != nil {
 		log.Fatal(err)
 	}
-	invertRef, err := mmap(invertFile)
-	if err != nil {
-		log.Fatal(err)
-	}
+	s := strings.Split(vocabPath, "/")
 	return &Segment{
+		name:       s[len(s)-1],
 		docLength:  make(map[uint64]uint32),
 		invertList: make(map[string]*list.List),
 		vocab:      vocab,
-		invertFile: invertFile,
-		invertRef:  invertRef,
+		invert:     invert,
 	}
 }
 
-func (s *Segment) Index(doc *xsearchpb.Document) {
+func (s *Segment) IndexDocument(doc *xsearchpb.Document) error {
 	var loc uint32
 	for _, token := range doc.Tokens {
 		term := token.GetTerm()
@@ -109,6 +96,8 @@ func (s *Segment) Index(doc *xsearchpb.Document) {
 		posting.Loc = append(posting.Loc, loc)
 		loc++
 	}
+	s.NumDocs++
+	return nil
 }
 
 func (s *Segment) Search(query *xsearchpb.Query,
@@ -144,111 +133,70 @@ func (s *Segment) Search(query *xsearchpb.Query,
 func (s *Segment) lookup(key []byte, doc2BM25 map[uint64]float32) error {
 	value := s.vocab.Get(key)
 	if value == nil {
-		log.Error(errNotFoundKey, string(key))
+		log.Error(s.name, errNotFoundKey, string(key))
 		return errNotFoundKey
 	}
-	loc := binary.LittleEndian.Uint64(value)
-	count := binary.LittleEndian.Uint64(s.invertRef[loc : loc+8 : loc+8])
-	log.Debug("count:", count)
-	loc += 8
+	off := int64(binary.LittleEndian.Uint64(value))
+	count := s.invert.Uint64At(off)
+	off += 8
 	for i := uint64(0); i < count; i++ {
-		docID := binary.LittleEndian.Uint64(s.invertRef[loc : loc+8 : loc+8])
-		loc += 8
-		bits := binary.LittleEndian.Uint32(s.invertRef[loc : loc+4 : loc+4])
+		docID := s.invert.Uint64At(off)
+		off += 8
+		bits := s.invert.Uint32At(off)
 		bm25 := math.Float32frombits(bits)
-		loc += 4
+		off += 4
 		doc2BM25[docID] += bm25
 	}
 	return nil
 }
 
-func (s *Segment) munmap() error {
-	if s.invertRef == nil {
-		return nil
+func (s *Segment) Persist() error {
+	if !atomic.CompareAndSwapInt32(&s.persist, 0, 1) {
+		return errors.New("Already persist.")
 	}
-	if err := syscall.Munmap(s.invertRef); err != nil {
-		return err
-	}
-	return nil
-}
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-func (s *Segment) Dump() {
-	// init file
-	vocabPath := fmt.Sprintf("%s/%d.vocab", s.opt.IndexDir, rand.Int())
-	vocabTmpPath := fmt.Sprintf("%s/%d.vocab.tmp", s.opt.IndexDir, rand.Int())
-	vocab, err := bindex.New(vocabPath, false)
-	if err != nil {
-		log.Fatal(err)
-	}
-	invertPath := fmt.Sprintf("%s/%d.invert.tmp", s.opt.IndexDir, rand.Int())
-	invert, err := os.OpenFile(invertPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// dump vocab/invert
-	var loc uint64
+	var off int64
 	for term, postingList := range s.invertList {
-		var buf bytes.Buffer
-		err := binary.Write(&buf, binary.LittleEndian, uint64(postingList.Len()))
-		if err != nil {
-			log.Fatal(err)
-		}
+		b := pool.Get().([]byte)
+		binary.LittleEndian.PutUint64(b, uint64(off))
+		s.vocab.Put([]byte(term), b)
+		pool.Put(b)
+
+		s.invert.PutUint64At(off, uint64(postingList.Len()))
+		off += 8
 		for e := postingList.Front(); e != nil; e = e.Next() {
 			if posting, ok := e.Value.(*types.Posting); ok {
-				err := binary.Write(&buf, binary.LittleEndian, posting.DocID)
-				if err != nil {
-					log.Fatal(err)
-				}
+				s.invert.PutUint64At(off, posting.DocID)
+				off += 8
 				idf := float32(math.Log2(float64(s.NumDocs)/float64(postingList.Len()) + 1))
 				bm25 := idf * float32(posting.Freq) * (BM25_K1 + 1) / (float32(posting.Freq) + BM25_K1*(1-BM25_B+BM25_B*float32(s.docLength[posting.DocID])/float32(s.avgDocLength)))
-				err = binary.Write(&buf, binary.LittleEndian, bm25)
-				if err != nil {
-					log.Fatal(err)
-				}
+				bits := math.Float32bits(bm25)
+				s.invert.PutUint32At(off, bits)
+				off += 4
 			} else {
 				log.Fatalf("convert fail:%#v\n", e)
 			}
 		}
-		n, err := invert.Write(buf.Bytes())
-		if n != buf.Len() || err != nil {
-			log.Fatalf("dump fail:n=%d,len=%d,err=%s\n", n, buf.Len(), err)
-		}
-		b := pool.Get().([]byte)
-		binary.LittleEndian.PutUint64(b, loc)
-		vocab.Put([]byte(term), b)
-		loc += uint64(n)
 	}
-	vocab.Close()
-	invert.Close()
-	os.Rename(vocabPath, s.opt.VocabPath)
-	os.Rename(invertPath, s.opt.InvertPath)
-}
-
-func (s *Segment) Reset() error {
-	s.NumDocs = 0
-	s.AvgDocLength = 0
-	s.InvertList = make(map[string]*list.List)
-	if s.vocab != nil {
-		s.vocab.Close()
-		s.vocab = nil
-	}
-	if s.invertRef != nil {
-		if err := syscall.Munmap(s.invertRef); err != nil {
-			return err
-		}
-		s.invertRef = nil
-	}
-	if s.invertFile != nil {
-		s.invertFile.Sync()
-		s.invertFile.Close()
-		s.invertFile = nil
-	}
+	s.invertList = nil
+	s.docLength = nil
 	return nil
 }
 
 func (s *Segment) Close() {
-	s.Reset()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.vocab != nil {
+		s.vocab.Close()
+		s.vocab = nil
+	}
+	if s.invert != nil {
+		s.invert.Close()
+		s.invert = nil
+	}
 }
 
 type DocHeap []*xsearchpb.Document
@@ -267,19 +215,4 @@ func (h *DocHeap) Pop() interface{} {
 	x := old[n-1]
 	*h = old[0 : n-1]
 	return x
-}
-
-func mmap(file *os.File) ([]byte, error) {
-	buf, err := syscall.Mmap(int(file.Fd()), 0, maxMapSize,
-		syscall.PROT_READ, syscall.MAP_SHARED)
-	if err != nil {
-		return nil, err
-	}
-	if _, _, err := syscall.Syscall(syscall.SYS_MADVISE,
-		uintptr(unsafe.Pointer(&buf[0])), uintptr(len(buf)),
-		uintptr(syscall.MADV_RANDOM)); err != 0 {
-
-		return nil, err
-	}
-	return buf, nil
 }
