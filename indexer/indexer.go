@@ -39,6 +39,7 @@ type Indexer struct {
 	exitC          chan struct{}
 	exitMu         sync.RWMutex
 	exitFlag       int32
+	persistWG      sync.WaitGroup
 }
 
 func New(opts ...option.IndexerOption) *Indexer {
@@ -162,6 +163,7 @@ func (idx *Indexer) indexOne(shardingID int, doc *xsearchpb.Document) error {
 
 	numDocs := atomic.LoadUint64(&seg.NumDocs)
 	if idx.opt.CommitTimeInterval == 0 && numDocs >= idx.opt.CommitNumDocs {
+		//log.Error(shardingID, doc.GetID())
 		idx.persist(shardingID)
 	}
 	return nil
@@ -250,10 +252,12 @@ func (idx *Indexer) persist(shardingID int) {
 	idx.segs[shardingID] = append(idx.segs[shardingID], newSeg)
 	idx.mu[shardingID].Unlock()
 
+	idx.persistWG.Add(1)
 	go func(seg *segment.Segment) {
 		if err := seg.Persist(); err != nil {
 			log.Error(err)
 		}
+		idx.persistWG.Done()
 	}(oldSeg)
 }
 func (idx *Indexer) persistAll() {
@@ -277,6 +281,7 @@ func (idx *Indexer) Close() {
 		return
 	}
 
+	idx.persistWG.Wait()
 	var wg sync.WaitGroup
 	wg.Add(idx.opt.Sharding)
 	for i := 0; i < idx.opt.Sharding; i++ {
@@ -288,6 +293,7 @@ func (idx *Indexer) Close() {
 				log.Error(err)
 			}
 			for j := range segs {
+				log.Error(i, j, "close")
 				segs[j].Close()
 			}
 			idx.mu[i].Unlock()

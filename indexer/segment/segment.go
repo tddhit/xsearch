@@ -2,7 +2,6 @@ package segment
 
 import (
 	"container/heap"
-	"container/list"
 	"encoding/binary"
 	"errors"
 	"math"
@@ -42,7 +41,7 @@ type Segment struct {
 	avgDocLength uint32
 	name         string
 	docLength    map[uint64]uint32
-	invertList   map[string]*list.List
+	invertList   map[string]*types.PostingList
 	vocab        *bindex.BIndex
 	invert       *mmap.MmapFile
 	persist      int32
@@ -61,39 +60,37 @@ func New(vocabPath, invertPath string, mode int) *Segment {
 	return &Segment{
 		name:       s[len(s)-1],
 		docLength:  make(map[uint64]uint32),
-		invertList: make(map[string]*list.List),
+		invertList: make(map[string]*types.PostingList),
 		vocab:      vocab,
 		invert:     invert,
 	}
 }
 
 func (s *Segment) IndexDocument(doc *xsearchpb.Document) error {
-	var loc uint32
+	var (
+		loc     uint32
+		posting *types.Posting
+	)
 	for _, token := range doc.Tokens {
+		//log.Error(len(doc.Tokens))
 		term := token.GetTerm()
-		var (
-			lastestPosting *types.Posting
-			posting        *types.Posting
-		)
+		if term == "" {
+			continue
+		}
 		if _, ok := s.invertList[term]; !ok {
-			s.invertList[term] = list.New()
+			s.invertList[term] = types.NewPostingList()
 		}
 		postingList := s.invertList[term]
-		elem := postingList.Back()
-		if elem != nil {
-			if p, ok := elem.Value.(*types.Posting); ok {
-				lastestPosting = p
-			}
-		}
-		if lastestPosting != nil && lastestPosting.DocID == doc.ID {
-			posting = lastestPosting
-		} else {
+		posting = postingList.Back()
+		if posting == nil || posting.DocID != doc.ID {
 			posting = &types.Posting{}
+			posting.DocID = doc.ID
+			posting.Freq = 1
 			postingList.PushBack(posting)
+		} else {
+			posting.Freq++
 		}
-		posting.DocID = doc.ID
-		posting.Freq++
-		posting.Loc = append(posting.Loc, loc)
+		//posting.Loc = append(posting.Loc, loc)
 		loc++
 	}
 	s.NumDocs++
@@ -157,6 +154,7 @@ func (s *Segment) Persist() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	log.Error(s.name, "persist start", len(s.invertList))
 	var off int64
 	for term, postingList := range s.invertList {
 		b := pool.Get().([]byte)
@@ -166,20 +164,17 @@ func (s *Segment) Persist() error {
 
 		s.invert.PutUint64At(off, uint64(postingList.Len()))
 		off += 8
-		for e := postingList.Front(); e != nil; e = e.Next() {
-			if posting, ok := e.Value.(*types.Posting); ok {
-				s.invert.PutUint64At(off, posting.DocID)
-				off += 8
-				idf := float32(math.Log2(float64(s.NumDocs)/float64(postingList.Len()) + 1))
-				bm25 := idf * float32(posting.Freq) * (BM25_K1 + 1) / (float32(posting.Freq) + BM25_K1*(1-BM25_B+BM25_B*float32(s.docLength[posting.DocID])/float32(s.avgDocLength)))
-				bits := math.Float32bits(bm25)
-				s.invert.PutUint32At(off, bits)
-				off += 4
-			} else {
-				log.Fatalf("convert fail:%#v\n", e)
-			}
+		for p := postingList.Front(); p != nil; p = p.Next() {
+			s.invert.PutUint64At(off, p.DocID)
+			off += 8
+			idf := float32(math.Log2(float64(s.NumDocs)/float64(postingList.Len()) + 1))
+			bm25 := idf * float32(p.Freq) * (BM25_K1 + 1) / (float32(p.Freq) + BM25_K1*(1-BM25_B+BM25_B*float32(s.docLength[p.DocID])/float32(s.avgDocLength)))
+			bits := math.Float32bits(bm25)
+			s.invert.PutUint32At(off, bits)
+			off += 4
 		}
 	}
+	log.Error(s.name, "persist end", len(s.invertList))
 	s.invertList = nil
 	s.docLength = nil
 	return nil
