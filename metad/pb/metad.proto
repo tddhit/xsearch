@@ -2,17 +2,91 @@ syntax = "proto3";
 
 package metad;
 
-import "google/api/annotations.proto";
-
 service Metad {
-  rpc Echo (EchoRequest) returns (EchoReply) {
-  }
+    rpc RegisterClient (stream RegisterClientReq) returns (stream RegisterClientRsp) {}
+    rpc RegisterNode (stream RegisterNodeReq) returns (stream RegisterNodeRsp) {}
+    rpc CreateNamespace (CreateNamespaceReq) returns (CreateNamespaceRsp) {}
+    rpc DropNamespace (DropNamespaceReq) returns (DropNamespaceRsp) {}
+    rpc CommitNamespace (CommitNamespaceReq) returns (CommitNamespaceRsp) {}
+    rpc AddNodeToNamespace (AddNodeToNamespaceReq) returns (AddNodeToNamespaceRsp) {}
+    rpc RemoveNodeFromNamespace (RemoveNodeFromNamespaceReq) returns (RemoveNodeFromNamespaceRsp) {}
+    rpc ReplaceNodeInNamespace (ReplaceNodeInNamespaceReq) returns (ReplaceNodeInNamespaceRsp) {}
 }
 
-message EchoRequest {
-  string msg = 1;
+message RegisterClientReq {
+    string namespace = 1;
 }
 
-message EchoReply {
-  string msg = 1;
+message RegisterClientRsp {
+    message ShardGroup {
+        repeated Shard replicas = 1;
+    }
+    message Shard {
+        string nodeAddr = 1;
+    }
+    repeated ShardGroup groups = 1;
+}
+
+message RegisterNodeReq {
+    message Shard {
+        string namespace = 1; 
+        uint32 id = 2;
+        uint32 replicaID = 3;
+    }
+    string addr = 1;
+    string adminAddr = 2;
+    Shard shard = 3;
+}
+
+message RegisterNodeRsp {
+}
+
+message CreateNamespaceReq {
+    string namespace = 1;
+    uint32 shardNum = 2;
+    uint32 replicaFactor = 3;
+}
+
+message CreateNamespaceRsp {
+}
+
+message DropNamespaceReq {
+    string namespace = 1;
+}
+
+message DropNamespaceRsp {
+}
+
+message CommitNamespaceReq {
+    string namespace = 1;
+}
+
+message CommitNamespaceRsp {
+}
+
+message AddNodeToNamespaceReq {
+    string namespace = 1; 
+    string addr = 2; 
+    string adminAddr = 3;
+}
+
+message AddNodeToNamespaceRsp {
+}
+
+message RemoveNodeFromNamespaceReq {
+    string namespace = 1;
+    string addr = 2;
+}
+
+message RemoveNodeFromNamespaceRsp {
+}
+
+message ReplaceNodeInNamespaceReq {
+    string namespace = 1;
+    string oldAddr = 2;
+    string newAddr = 3;
+    string newAdminAddr = 4;
+}
+
+message ReplaceNodeInNamespaceRsp {
 }

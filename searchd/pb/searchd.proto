@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package searchdpb;
+
+service SearchdAdmin {
+    rpc CreateShard (CreateShardReq) returns (CreateShardRsp) {}
+    rpc RemoveShard (RemoveShardReq) returns (RemoveShardRsp) {}
+    rpc SyncShard (SyncShardReq) returns (SyncShardRsp) {}
+}
+
+message CreateShardReq {
+    string namespace = 1;
+    uint32 shardID = 2;
+    uint32 replicaID = 3;
+}
+
+message CreateShardRsp {
+}
+
+message RemoveShardReq {
+    string namespace = 1;
+    uint32 shardID = 2;
+    uint32 replicaID = 3;
+}
+
+message RemoveShardRsp {
+}
+
+message SyncShardReq {
+    string namespace = 1;
+    uint32 shardID = 2;
+    uint32 replicaID = 3;
+    string fromNode = 4;
+    string toNode = 5;
+}
+
+message SyncShardRsp {
+}

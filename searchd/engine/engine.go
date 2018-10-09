@@ -3,7 +3,7 @@ package engine
 import (
 	"errors"
 
-	"github.com/tddhit/hunter/indexer"
+	"github.com/tddhit/xsearch/indexer"
 	xsearchpb "github.com/tddhit/xsearch/xsearchpb"
 )
 
@@ -12,34 +12,22 @@ var (
 )
 
 type Engine struct {
-	indexer   *indexer.Indexer
-	documentC chan *xsearchpb.Document
+	indexer *indexer.Indexer
 }
 
 func New() *Engine {
 	e := &Engine{
-		indexer:   indexer.New(),
-		documentC: make(chan *xsearchpb.Document),
+		indexer: indexer.New(),
 	}
 	return e
 }
 
 func (e *Engine) AddDoc(doc *xsearchpb.Document) error {
-	select {
-	case e.documentC <- doc:
-		return nil
-	default:
-		return errBufIsFull
-	}
+	return e.indexer.IndexDocument(doc)
 }
 
-func (e *Engine) RemoveDoc(doc *xsearchpb.Document) error {
-	select {
-	case e.documentC <- doc:
-		return nil
-	default:
-		return errBufIsFull
-	}
+func (e *Engine) RemoveDoc(doc *xsearchpb.Document) {
+	e.indexer.RemoveDocument(doc.GetID())
 }
 
 func (e *Engine) Search(query *xsearchpb.Query, start uint64, count int32) ([]*xsearchpb.Document, error) {

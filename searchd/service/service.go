@@ -34,10 +34,7 @@ func (s *service) AddDoc(ctx context.Context,
 func (s *service) RemoveDoc(ctx context.Context,
 	in *searchdpb.RemoveDocRequest) (*searchdpb.RemoveDocReply, error) {
 
-	err := s.engine.RemoveDoc(in.GetDoc())
-	if err != nil {
-		return nil, status.Error(codes.Unavailable, err.Error())
-	}
+	s.engine.RemoveDoc(in.GetDoc())
 	return nil, nil
 }
 

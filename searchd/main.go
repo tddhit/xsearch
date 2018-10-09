@@ -13,13 +13,15 @@ import (
 )
 
 var (
-	confPath string
-	grpcAddr string
+	confPath        string
+	clientGRPCAddr  string
+	clusterGRPCAddr string
 )
 
 func init() {
 	flag.StringVar(&confPath, "conf-path", "conf/searchd.yml", "config file")
-	flag.StringVar(&grpcAddr, "grpc-addr", "grpc://127.0.0.1:9000", "grpc listen address")
+	flag.StringVar(&clientGRPCAddr, "client-grpc-addr", "grpc://127.0.0.1:9000", "process client request")
+	flag.StringVar(&clusterGRPCAddr, "cluster-grpc-addr", "grpc://127.0.0.1:9001", "process cluster request")
 	flag.Parse()
 }
 
