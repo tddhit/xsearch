@@ -112,13 +112,13 @@ func (s *service) CreateNamespace(
 	ctx context.Context,
 	req *metadpb.CreateNamespaceReq) (*metadpb.CreateNamespaceRsp, error) {
 
-	_, created := s.resource.getOrCreateTable(
+	err := s.resource.createTable(
 		req.Namespace,
 		int(req.ShardNum),
 		int(req.ReplicaFactor),
 	)
-	if !created {
-		return nil, status.Error(codes.AlreadyExists, req.Namespace)
+	if err != nil {
+		return nil, status.Error(codes.AlreadyExists, err.Error())
 	}
 	return &metadpb.CreateNamespaceRsp{}, nil
 }
@@ -133,16 +133,6 @@ func (s *service) DropNamesapce(
 	return &metadpb.DropNamespaceRsp{}, nil
 }
 
-func (s *service) CommitNamesapce(
-	ctx context.Context,
-	req *metadpb.CommitNamespaceReq) (*metadpb.CommitNamespaceRsp, error) {
-
-	if err := s.resource.commit(req.Namespace); err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	return &metadpb.CommitNamespaceRsp{}, nil
-}
-
 func (s *service) AddNodeToNamespace(
 	ctx context.Context,
 	req *metadpb.AddNodeToNamespaceReq) (*metadpb.AddNodeToNamespaceRsp, error) {
@@ -151,10 +141,7 @@ func (s *service) AddNodeToNamespace(
 	if !ok {
 		return nil, status.Error(codes.NotFound, req.Addr)
 	}
-	table, ok := s.resource.getTable(req.Namespace)
-	if !ok {
-		return nil, status.Error(codes.NotFound, req.Namespace)
-	}
+	table := ctx.Value(tableContextKey).(*shardTable)
 	if err := table.addNode(node); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -170,10 +157,7 @@ func (s *service) RemoveNodeFromNamespace(
 	if !ok {
 		return nil, status.Error(codes.NotFound, req.Addr)
 	}
-	table, ok := s.resource.getTable(req.Namespace)
-	if !ok {
-		return nil, status.Error(codes.NotFound, req.Namespace)
-	}
+	table := ctx.Value(tableContextKey).(*shardTable)
 	if err := table.removeNode(node); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -181,7 +165,7 @@ func (s *service) RemoveNodeFromNamespace(
 }
 
 func (s *service) ReplaceNodeInNamespace(
-	ctx *context.Context,
+	ctx context.Context,
 	req *metadpb.ReplaceNodeInNamespaceReq,
 ) (*metadpb.ReplaceNodeInNamespaceRsp, error) {
 
@@ -193,12 +177,62 @@ func (s *service) ReplaceNodeInNamespace(
 	if !ok {
 		return nil, status.Error(codes.NotFound, req.NewAddr)
 	}
-	table, ok := s.resource.getTable(req.Namespace)
-	if !ok {
-		return nil, status.Error(codes.NotFound, req.Namespace)
-	}
+	table := ctx.Value(tableContextKey).(*shardTable)
 	if err := table.replaceNode(old, new); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	return &metadpb.ReplaceNodeInNamespaceRsp{}, nil
+}
+
+func (s *service) AutoBalance(
+	ctx context.Context,
+	req *metadpb.AutoBalanceReq) (*metadpb.AutoBalanceRsp, error) {
+
+	table := ctx.Value(tableContextKey).(*shardTable)
+	if err := table.autoBalance(); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &metadpb.AutoBalanceRsp{}, nil
+}
+
+func (s *service) MigrateShard(
+	ctx context.Context,
+	req *metadpb.MigrateShardReq) (*metadpb.MigrateShardRsp, error) {
+
+	table := ctx.Value(tableContextKey).(*shardTable)
+	online := ctx.Value(onlineContextKey).(*shardTable)
+	shard, err := table.getShard(int(req.ShardID), int(req.ReplicaID))
+	if err != nil {
+		return nil, status.Error(codes.NotFound, err.Error())
+	}
+	from, ok := s.resource.getNode(req.FromNode)
+	if !ok {
+		return nil, status.Error(codes.NotFound, req.FromNode)
+	}
+	to, ok := s.resource.getNode(req.ToNode)
+	if !ok {
+		return nil, status.Error(codes.NotFound, req.ToNode)
+	}
+	if err := table.migrate(shard, from, to, online); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &metadpb.MigrateShardRsp{}, nil
+}
+
+func (s *service) Info(
+	ctx *context.Context,
+	req *metadpb.InfoReq) (*metadpb.InfoRsp, error) {
+
+	return &metadpb.InfoRsp{}, nil
+}
+
+func (s *service) Commit(
+	ctx context.Context,
+	req *metadpb.CommitReq) (*metadpb.CommitRsp, error) {
+
+	table := ctx.Value(tableContextKey).(*shardTable)
+	if err := table.commit(); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &metadpb.CommitRsp{}, nil
 }

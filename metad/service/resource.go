@@ -11,6 +11,7 @@ type resource struct {
 	nodes   map[string]*node
 	online  map[string]*shardTable
 	offline map[string]*shardTable
+	todos   []*todo
 }
 
 func newResource() *resource {
@@ -71,28 +72,19 @@ func (r *resource) getTable(namespace string) (*shardTable, bool) {
 	return table, ok
 }
 
-func (r *resource) getOrCreateTable(
-	namespace string,
-	shardNum int,
-	replicaFactor int) (_ *shardTable, created bool) {
-
-	r.RLock()
-	if t, ok := r.offline[namespace]; ok {
-		r.RUnlock()
-		return t, false
-	}
-	r.RUnlock()
-
+func (r *resource) createTable(namespace string, shardNum, replicaFactor int) error {
 	r.Lock()
-	if t, ok := r.offline[namespace]; ok {
-		r.RUnlock()
-		return t, false
-	}
-	t := newTable(namespace, shardNum, replicaFactor)
-	r.offline[namespace] = t
-	r.RUnlock()
+	defer r.Unlock()
 
-	return t, true
+	if _, ok := r.offline[namespace]; ok {
+		return fmt.Errorf("(%s)already exists in offline table.", namespace)
+	}
+	if _, ok := r.online[namespace]; ok {
+		return fmt.Errorf("(%s)already exists in online table.", namespace)
+	}
+	r.online[namespace] = newTable(namespace, shardNum, replicaFactor)
+	r.offline[namespace] = newTable(namespace, shardNum, replicaFactor)
+	return nil
 }
 
 func (r *resource) removeTable(namespace string) error {
@@ -106,113 +98,10 @@ func (r *resource) removeTable(namespace string) error {
 	return nil
 }
 
-func (r *resource) commit(namespace string) error {
-	return nil
+func (r *resource) getOnlineTable(namespace string) (*shardTable, bool) {
+	r.RLock()
+	defer r.RUnlock()
+
+	table, ok := r.online[namespace]
+	return table, ok
 }
-
-func (r *resource) diff() {
-}
-
-/*
-func (r *resource) allocateShards(
-	namespace string,
-	shardNum int,
-	replicaFactor int,
-	startNodeID int) *shardTable {
-
-	table := newTable(namespace, sahrdNum, replicaFactor)
-	nodeID := startNodeID
-	for i := 0; i < shardNum; i++ {
-		nodeID++
-		if nodeID >= len(r.nodes) {
-			nodeID = 0
-		}
-		k := nodeID
-		for j := 0; j < replicaFactor; j++ {
-			s := &shard{
-				id:        i,
-				namespace: namespace,
-			}
-			table.groups[i].replicas[j] = s
-			if j == 0 {
-				s.status = PrimaryShard
-				s.node = r.nodeSlice[k]
-			}
-			k++
-		}
-	}
-	return table
-}
-
-func (r *resource) grow() {
-	r.Lock()
-	defer r.Unlock()
-
-	for {
-		minNode, min := r.hasMinShards()
-		maxNode, max := r.hasMaxShards()
-		if max-min <= 1 {
-			break
-		}
-		shard := maxNode.shards[max-1]
-		minNode.shards = append(minNode.shards, shard)
-		maxNode.shards = append(maxNode.shards[:max-1], maxNode.shards[max:]...)
-		shard.node = minNode
-	}
-}
-
-func (r *resource) shrink() {
-	r.Lock()
-	defer r.Unlock()
-
-	for {
-		node, shard := waitingForMigrate()
-		if shard == nil {
-			break
-		}
-		minNode, _ := hasMinShards()
-		node.shards = append(node.shards[:i-1], node.shards[i+1:]...)
-		minNode.shards = append(minNode.shards, shard)
-		shard.node = minNode
-	}
-}
-
-func (r *resource) hasMinShards() (*node, int) {
-	var (
-		min     = 0
-		minNode *node
-	)
-	for _, n := range r.nodes {
-		if min >= len(n.shards) {
-			min = len(n.shards)
-			minNode = n
-		}
-	}
-	return minNode, min
-}
-
-func (r *resource) hasMaxShards() (*node, int) {
-	var (
-		max     = 0
-		maxNode *node
-	)
-	for _, n := range r.nodes {
-		if max <= len(n.shards) {
-			max = len(n.shards)
-			maxNode = n
-		}
-	}
-	return maxNode, max
-}
-
-func (r *resource) waitingForMigrate() (*node, *shard) {
-	for _, n := range r.nodes {
-		if n.status == NodeRemove {
-			if len(n.shards) != 0 {
-				return n, n.shards[len(n.shards)-1]
-			}
-		}
-	}
-	return nil, nil
-}
-*/

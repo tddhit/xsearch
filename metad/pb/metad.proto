@@ -7,10 +7,13 @@ service Metad {
     rpc RegisterNode (stream RegisterNodeReq) returns (stream RegisterNodeRsp) {}
     rpc CreateNamespace (CreateNamespaceReq) returns (CreateNamespaceRsp) {}
     rpc DropNamespace (DropNamespaceReq) returns (DropNamespaceRsp) {}
-    rpc CommitNamespace (CommitNamespaceReq) returns (CommitNamespaceRsp) {}
     rpc AddNodeToNamespace (AddNodeToNamespaceReq) returns (AddNodeToNamespaceRsp) {}
     rpc RemoveNodeFromNamespace (RemoveNodeFromNamespaceReq) returns (RemoveNodeFromNamespaceRsp) {}
     rpc ReplaceNodeInNamespace (ReplaceNodeInNamespaceReq) returns (ReplaceNodeInNamespaceRsp) {}
+    rpc AutoBalance (AutoBalanceReq) returns (AutoBalanceRsp) {}
+    rpc MigrateShard (MigrateShardReq) returns (MigrateShardRsp) {}
+    rpc Info (InfoReq) returns (InfoRsp) {}
+    rpc Commit (CommitReq) returns (CommitRsp) {}
 }
 
 message RegisterClientReq {
@@ -57,13 +60,6 @@ message DropNamespaceReq {
 message DropNamespaceRsp {
 }
 
-message CommitNamespaceReq {
-    string namespace = 1;
-}
-
-message CommitNamespaceRsp {
-}
-
 message AddNodeToNamespaceReq {
     string namespace = 1; 
     string addr = 2; 
@@ -89,4 +85,36 @@ message ReplaceNodeInNamespaceReq {
 }
 
 message ReplaceNodeInNamespaceRsp {
+}
+
+message AutoBalanceReq {
+    string namespace = 1;
+}
+
+message AutoBalanceRsp {
+}
+
+message MigrateShardReq {
+    string namespace = 1;
+    uint32 shardID = 2;    
+    uint32 replicaID = 3;
+    string fromNode = 4;
+    string toNode = 5;
+}
+
+message MigrateShardRsp {
+}
+
+message InfoReq {
+    string namespace = 1;
+}
+
+message InfoRsp {
+}
+
+message CommitReq {
+    string namespace = 1;
+}
+
+message CommitRsp {
 }

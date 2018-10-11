@@ -16,7 +16,7 @@ const (
 )
 
 type todo struct {
-	id     int
+	id     uint64
 	action action
 	from   *node
 	to     *node
@@ -25,7 +25,7 @@ type todo struct {
 	stages []func() error
 }
 
-func newTODO(id int, a action, from, to *node, s *shard, t *shardTable) *todo {
+func newTodo(id uint64, a action, from, to *node, s *shard, t *shardTable) *todo {
 	d := &todo{
 		action: a,
 		from:   from,
