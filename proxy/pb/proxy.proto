@@ -32,12 +32,12 @@ message IndexDocReq {
 }
 
 message IndexDocRsp {
-    uint64 docID = 1;
+    string docID = 1;
 }
 
 message RemoveDocReq {
     string namespace = 1;
-    uint64 docID = 2;
+    string docID = 2;
 }
 
 message RemoveDocRsp {

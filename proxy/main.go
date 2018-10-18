@@ -14,19 +14,22 @@ import (
 )
 
 var (
-	httpAddr  string
-	metadAddr string
-	pidPath   string
-	logPath   string
-	logLevel  int
+	httpAddr   string
+	metadAddr  string
+	namespaces string
+	pidPath    string
+	logPath    string
+	logLevel   int
 )
 
 func init() {
-	flag.StringVar(&httpAddr, "http-addr", "http://:9010",
+	flag.StringVar(&httpAddr, "http-addr", "http://:10000",
 		"client communication address")
-	flag.StringVar(&metadAddr, "metad-addr", "grpc://:9020",
+	flag.StringVar(&metadAddr, "metad-addr", "grpc://:10010",
 		"metad communication address")
-	flag.StringVar(&pidPath, "pidpath", "/var/searchd.pid", "pid path")
+	flag.StringVar(&namespaces, "namespaces", "faq,news",
+		"Business name separated by a comma")
+	flag.StringVar(&pidPath, "pidpath", "/var/proxy.pid", "pid path")
 	flag.StringVar(&logPath, "logpath", "", "log file path")
 	flag.IntVar(&logLevel, "loglevel", 1,
 		"log level (Trace:1, Debug:2, Info:3, Error:5)")
@@ -35,7 +38,7 @@ func init() {
 
 func main() {
 	log.Init(logPath, logLevel)
-	svc, err := service.NewService(metadAddr)
+	svc, err := service.NewService(metadAddr, namespaces)
 	if err != nil {
 		log.Fatal(err)
 	}

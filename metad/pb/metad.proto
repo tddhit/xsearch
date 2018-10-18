@@ -3,7 +3,7 @@ syntax = "proto3";
 package metadpb;
 
 service Metad {
-    rpc RegisterProxy (stream RegisterProxyReq) returns (stream RegisterProxyRsp) {}
+    rpc RegisterClient (stream RegisterClientReq) returns (stream RegisterClientRsp) {}
     rpc RegisterNode (stream RegisterNodeReq) returns (stream RegisterNodeRsp) {}
     rpc CreateNamespace (CreateNamespaceReq) returns (CreateNamespaceRsp) {}
     rpc DropNamespace (DropNamespaceReq) returns (DropNamespaceRsp) {}
@@ -16,10 +16,11 @@ service Metad {
     rpc Commit (CommitReq) returns (CommitRsp) {}
 }
 
-message RegisterProxyReq {
+message RegisterClientReq {
+    string namespace = 1;
 }
 
-message RegisterProxyRsp {
+message RegisterClientRsp {
     message Shard {
         uint32 groupID = 1;
         uint32 replicaID = 2;

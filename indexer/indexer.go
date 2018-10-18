@@ -185,7 +185,7 @@ func (idx *Indexer) IndexDocument(doc *xsearchpb.Document) error {
 	return <-idx.indexRspC[i]
 }
 
-func (idx *Indexer) RemoveDocument(docID uint64) {
+func (idx *Indexer) RemoveDocument(docID string) {
 	idx.removeDocs.Store(docID, struct{}{})
 }
 

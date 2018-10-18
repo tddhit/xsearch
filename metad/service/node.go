@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/tddhit/box/transport"
@@ -86,6 +87,20 @@ func (n *node) removeShard(s *shard) error {
 	}
 	n.shards = append(n.shards[:i], n.shards[i+1:]...)
 	return nil
+}
+
+func (n *node) ioLoop(stream metadpb.Metad_RegisterNodeServer) {
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		n.readLoop()
+		wg.Done()
+	}()
+	go func() {
+		n.writeLoop(stream)
+		wg.Done()
+	}()
+	wg.Wait()
 }
 
 func (n *node) close() {

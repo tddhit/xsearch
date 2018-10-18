@@ -1,6 +1,7 @@
 package service
 
 import (
+	"sync"
 	"time"
 
 	"github.com/tddhit/tools/log"
@@ -19,8 +20,8 @@ func newClient(addr, namespace string) *client {
 	return &client{
 		addr:      addr,
 		namespace: namespace,
-		readC:     make(chan *metadpb.RegisterClientReq, 2),
-		writeC:    make(chan *metadpb.RegisterClientRsp, 2),
+		readC:     make(chan *metadpb.RegisterClientReq, 10),
+		writeC:    make(chan *metadpb.RegisterClientRsp, 10),
 	}
 }
 
@@ -39,21 +40,37 @@ func (c *client) readLoop() {
 	}
 exit:
 	timer.Stop()
+	c.close()
+	c.readC = nil
 }
 
 func (c *client) writeLoop(stream metadpb.Metad_RegisterClientServer) {
 	for {
-		select {
-		case rsp := <-c.writeC:
-			if rsp == nil {
-				return
-			}
-			if err := stream.Send(rsp); err != nil {
-				log.Error(err)
-				return
-			}
+		rsp := <-c.writeC
+		if rsp == nil {
+			return
+		}
+		if err := stream.Send(rsp); err != nil {
+			log.Error(err)
+			goto exit
 		}
 	}
+exit:
+	c.writeC = nil
+}
+
+func (c *client) ioLoop(stream metadpb.Metad_RegisterClientServer) {
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		c.readLoop()
+		wg.Done()
+	}()
+	go func() {
+		c.writeLoop(stream)
+		wg.Done()
+	}()
+	wg.Wait()
 }
 
 func (c *client) close() {

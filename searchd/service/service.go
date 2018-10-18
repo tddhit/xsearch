@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/tddhit/xsearch/searchd/pb"
+	searchdpb "github.com/tddhit/xsearch/searchd/pb"
 )
 
 type service struct {

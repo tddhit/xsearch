@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"io"
-	"sync"
 
 	"github.com/tddhit/tools/log"
 	"google.golang.org/grpc/codes"
@@ -23,45 +22,6 @@ func New() *service {
 		reception: newReception(),
 		resource:  newResource(),
 	}
-}
-
-func (s *service) RegisterNode(stream metadpb.Metad_RegisterNodeServer) error {
-	req, err := stream.Recv()
-	if err == io.EOF {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-	node, created, err := s.resource.getOrCreateNode(req.Addr, req.AdminAddr)
-	if err != nil {
-		return status.Error(codes.Internal, err.Error())
-	}
-	if !created {
-		return status.Error(codes.AlreadyExists, req.Addr)
-	}
-	go func() {
-		for {
-			req, err := stream.Recv()
-			if err != nil {
-				log.Error(err)
-				return
-			}
-			node.readC <- req
-		}
-	}()
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
-		node.readLoop()
-		wg.Done()
-	}()
-	go func() {
-		node.writeLoop(stream)
-		wg.Done()
-	}()
-	wg.Wait()
-	return nil
 }
 
 func (s *service) RegisterClient(stream metadpb.Metad_RegisterClientServer) error {
@@ -94,17 +54,36 @@ func (s *service) RegisterClient(stream metadpb.Metad_RegisterClientServer) erro
 			client.readC <- req
 		}
 	}()
-	var wg sync.WaitGroup
-	wg.Add(2)
+	client.ioLoop(stream)
+	return nil
+}
+
+func (s *service) RegisterNode(stream metadpb.Metad_RegisterNodeServer) error {
+	req, err := stream.Recv()
+	if err == io.EOF {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	n, created, err := s.resource.getOrCreateNode(req.Addr, req.AdminAddr)
+	if err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+	if !created {
+		return status.Error(codes.AlreadyExists, req.Addr)
+	}
 	go func() {
-		client.readLoop()
-		wg.Done()
+		for {
+			req, err := stream.Recv()
+			if err != nil {
+				log.Error(err)
+				return
+			}
+			n.readC <- req
+		}
 	}()
-	go func() {
-		client.writeLoop(stream)
-		wg.Done()
-	}()
-	wg.Wait()
+	n.ioLoop(stream)
 	return nil
 }
 

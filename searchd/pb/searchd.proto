@@ -39,7 +39,7 @@ message IndexDocRsp {
 
 message RemoveDocReq {
     string shardID = 1;
-    uint64 docID = 2;
+    string docID = 2;
 }
 
 message RemoveDocRsp {
@@ -64,6 +64,6 @@ message Command {
     Type type = 1; 
     oneof doc_oneof{ 
         xsearchpb.Document doc = 3;
-        uint64 docID = 4;
+        string docID = 4;
     }
 }

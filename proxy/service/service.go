@@ -5,8 +5,11 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
+	"time"
 
+	uuid "github.com/satori/go.uuid"
 	"github.com/tddhit/box/transport"
 	"github.com/tddhit/tools/log"
 	"google.golang.org/grpc/codes"
@@ -21,9 +24,10 @@ import (
 type service struct {
 	metad    metadpb.MetadGrpcClient
 	resource *resource
+	exitC    chan struct{}
 }
 
-func NewService(metadAddr string) (*service, error) {
+func NewService(metadAddr, namespaces string) (*service, error) {
 	conn, err := transport.Dial(metadAddr)
 	if err != nil {
 		log.Error(err)
@@ -32,16 +36,28 @@ func NewService(metadAddr string) (*service, error) {
 	s := &service{
 		metad:    metadpb.NewMetadGrpcClient(conn),
 		resource: newResource(),
+		exitC:    make(chan struct{}),
 	}
-	stream, err := s.metad.RegisterProxy(context.Background())
-	if err != nil {
-		return nil, err
+	nss := strings.Split(namespaces, ",")
+	for _, ns := range nss {
+		if err := s.registerClient(ns); err != nil {
+			return nil, err
+		}
 	}
-	go s.watchShardTable(stream)
 	return s, nil
 }
 
-func (s *service) watchShardTable(stream metadpb.Metad_RegisterProxyClient) {
+func (s *service) registerClient(namespace string) error {
+	stream, err := s.metad.RegisterClient(context.Background())
+	if err != nil {
+		return err
+	}
+	go s.watchShardTable(stream)
+	go s.keepAliveWithMetad(namespace, stream)
+	return nil
+}
+
+func (s *service) watchShardTable(stream metadpb.Metad_RegisterClientClient) {
 	for {
 		rsp, err := stream.Recv()
 		if err == io.EOF {
@@ -75,13 +91,18 @@ func (s *service) watchShardTable(stream metadpb.Metad_RegisterProxyClient) {
 	}
 }
 
-/*
-func (s *service) keepAliveWithMetad(stream metadpb.Metad_RegisterProxyClient) {
+func (s *service) keepAliveWithMetad(
+	namespace string,
+	stream metadpb.Metad_RegisterClientClient) {
+
 	ticker := time.NewTicker(time.Second)
 	for {
 		select {
 		case <-ticker.C:
-			if err := stream.Send(&metadpb.RegisterProxyReq{}); err != nil {
+			err := stream.Send(&metadpb.RegisterClientReq{
+				Namespace: namespace,
+			})
+			if err != nil {
 				log.Error(err)
 			}
 		case <-s.exitC:
@@ -91,7 +112,6 @@ func (s *service) keepAliveWithMetad(stream metadpb.Metad_RegisterProxyClient) {
 exit:
 	ticker.Stop()
 }
-*/
 
 func (s *service) IndexDoc(
 	ctx context.Context,
@@ -101,15 +121,22 @@ func (s *service) IndexDoc(
 	if !ok {
 		return nil, status.Error(codes.NotFound, req.Namespace)
 	}
-	key := req.Doc.ID
+	id, err := uuid.NewV4()
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	key := hash(id[:])
 	groupID := key % uint64(table.shardNum)
 	replicaID := key % uint64(table.replicaFactor)
 	shard, _ := table.getShard(int(groupID), int(replicaID))
-	shard.node.client.IndexDoc(ctx, &searchdpb.IndexDocReq{
+	_, err = shard.node.client.IndexDoc(ctx, &searchdpb.IndexDocReq{
 		ShardID: shard.id,
 		Doc:     req.Doc,
 	})
-	return &proxypb.IndexDocRsp{}, nil
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &proxypb.IndexDocRsp{DocID: string(id[:])}, nil
 }
 
 func (s *service) RemoveDoc(
@@ -120,14 +147,17 @@ func (s *service) RemoveDoc(
 	if !ok {
 		return nil, status.Error(codes.NotFound, req.Namespace)
 	}
-	key := req.DocID
+	key := hash([]byte(req.DocID))
 	groupID := key % uint64(table.shardNum)
 	replicaID := key % uint64(table.replicaFactor)
 	shard, _ := table.getShard(int(groupID), int(replicaID))
-	shard.node.client.RemoveDoc(ctx, &searchdpb.RemoveDocReq{
+	_, err := shard.node.client.RemoveDoc(ctx, &searchdpb.RemoveDocReq{
 		ShardID: shard.id,
 		DocID:   req.DocID,
 	})
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
 	return &proxypb.RemoveDocRsp{}, nil
 }
 
