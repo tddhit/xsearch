@@ -2,37 +2,68 @@ syntax = "proto3";
 
 package searchdpb;
 
+import "xsearch/pb/xsearch.proto";
+
 service SearchdAdmin {
     rpc CreateShard (CreateShardReq) returns (CreateShardRsp) {}
     rpc RemoveShard (RemoveShardReq) returns (RemoveShardRsp) {}
-    rpc SyncShard (SyncShardReq) returns (SyncShardRsp) {}
+}
+
+service Searchd {
+    rpc IndexDoc (IndexDocReq) returns (IndexDocRsp) {}
+    rpc RemoveDoc (RemoveDocReq) returns (RemoveDocRsp) {}
+    rpc Search (SearchReq) returns (SearchRsp) {}
 }
 
 message CreateShardReq {
-    string namespace = 1;
-    uint32 shardID = 2;
-    uint32 replicaID = 3;
+    string shardID = 1;
 }
 
 message CreateShardRsp {
 }
 
 message RemoveShardReq {
-    string namespace = 1;
-    uint32 shardID = 2;
-    uint32 replicaID = 3;
+    string shardID = 1;
 }
 
 message RemoveShardRsp {
 }
 
-message SyncShardReq {
-    string namespace = 1;
-    uint32 shardID = 2;
-    uint32 replicaID = 3;
-    string fromNode = 4;
-    string toNode = 5;
+message IndexDocReq {
+    string shardID = 1;
+    xsearchpb.Document doc = 2;
 }
 
-message SyncShardRsp {
+message IndexDocRsp {
+}
+
+message RemoveDocReq {
+    string shardID = 1;
+    uint64 docID = 2;
+}
+
+message RemoveDocRsp {
+}
+
+message SearchReq {
+    string shardID = 1;
+    xsearchpb.Query query = 2;
+    uint64 start = 3;
+    uint32 count = 4;
+}
+
+message SearchRsp {
+    repeated xsearchpb.Document docs = 1;
+}
+
+message Command {
+    enum Type{
+        INDEX = 0; 
+        REMOVE = 1;
+    } 
+    Type type = 1; 
+    oneof doc_oneof{ 
+        xsearchpb.Document doc = 3;
+        uint64 docID = 4;
+    }
 }

@@ -4,53 +4,44 @@ package main
 
 import (
 	"flag"
+
 	"github.com/tddhit/box/mw"
 	"github.com/tddhit/box/transport"
+	tropt "github.com/tddhit/box/transport/option"
 	"github.com/tddhit/tools/log"
-	. "github.com/tddhit/xsearch/metad/conf"
+
+	"github.com/tddhit/xsearch/metad/pb"
 	"github.com/tddhit/xsearch/metad/service"
-	pb "github.com/tddhit/xsearch/metad/pb"
 )
 
 var (
-	confPath   string
-	grpcAddr string
+	listenAddr string
+	pidPath    string
+	logPath    string
+	logLevel   int
 )
 
 func init() {
-	flag.StringVar(&confPath, "conf-path", "conf/metad.yml", "config file")
-	flag.StringVar(&grpcAddr, "grpc-addr", "grpc://127.0.0.1:9000", "grpc listen address")
+	flag.StringVar(&listenAddr, "listen-addr", "grpc://:9010", "listen address")
+	flag.StringVar(&pidPath, "pidpath", "/var/metad.pid", "pid path")
+	flag.StringVar(&logPath, "logpath", "", "log file path")
+	flag.IntVar(&logLevel, "loglevel", 1,
+		"log level (Trace:1, Debug:2, Info:3, Error:5)")
 	flag.Parse()
 }
 
 func main() {
-	var (
-		conf  	Conf
-		err 	error
-		svc interface{}
+	log.Init(logPath, logLevel)
+	svc := service.New()
+	grpcServer, err := transport.Listen(
+		listenAddr,
+		tropt.WithUnaryServerMiddleware(
+			service.CheckNamespaceWithUnary(svc),
+		),
 	)
-	NewConf(confPath, &conf)
-	log.Init(conf.LogPath, conf.LogLevel)
-	if mw.IsWorker() { 
-		svc = service.NewService()
-	}
-
-	
-	// new GRPC Server
-	grpcServer, err := transport.Listen(grpcAddr)
 	if err != nil {
 		log.Fatal(err)
 	}
-	if mw.IsWorker() { 
-		grpcServer.Register(pb.MetadGrpcServiceDesc, svc)
-	}
-	
-
-
-	
-
-	
-
-	// run with master-worker
-	mw.Run(mw.WithServer(grpcServer))
+	grpcServer.Register(metadpb.MetadGrpcServiceDesc, svc)
+	mw.Run(mw.WithServer(grpcServer), mw.WithPIDPath(pidPath))
 }

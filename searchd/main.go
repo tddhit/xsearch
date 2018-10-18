@@ -4,48 +4,79 @@ package main
 
 import (
 	"flag"
+
+	"github.com/tddhit/box/metrics"
 	"github.com/tddhit/box/mw"
+	"github.com/tddhit/box/tracing"
 	"github.com/tddhit/box/transport"
+	tropt "github.com/tddhit/box/transport/option"
+	diskqueuepb "github.com/tddhit/diskqueue/pb"
 	"github.com/tddhit/tools/log"
-	. "github.com/tddhit/xsearch/searchd/conf"
-	"github.com/tddhit/xsearch/searchd/searchdpb"
+
+	searchdpb "github.com/tddhit/xsearch/searchd/pb"
 	"github.com/tddhit/xsearch/searchd/service"
 )
 
 var (
-	confPath        string
-	clientGRPCAddr  string
-	clusterGRPCAddr string
+	listenAddr    string
+	clusterAddr   string
+	diskqueueAddr string
+	dataDir       string
+	pidPath       string
+	logPath       string
+	logLevel      int
 )
 
 func init() {
-	flag.StringVar(&confPath, "conf-path", "conf/searchd.yml", "config file")
-	flag.StringVar(&clientGRPCAddr, "client-grpc-addr", "grpc://127.0.0.1:9000", "process client request")
-	flag.StringVar(&clusterGRPCAddr, "cluster-grpc-addr", "grpc://127.0.0.1:9001", "process cluster request")
+	flag.StringVar(&listenAddr, "listen-addr", "grpc://:9010",
+		"client communication address")
+	flag.StringVar(&clusterAddr, "cluster-addr", "grpc://:9020",
+		"raft communication address")
+	flag.StringVar(&diskqueueAddr, "diskqueue-addr", ":8010",
+		"diskqueue address")
+	flag.StringVar(&pidPath, "pidpath", "/var/searchd.pid", "pid path")
+	flag.StringVar(&dataDir, "datadir", "", "data directory")
+	flag.StringVar(&logPath, "logpath", "", "log file path")
+	flag.IntVar(&logLevel, "loglevel", 1,
+		"log level (Trace:1, Debug:2, Info:3, Error:5)")
 	flag.Parse()
 }
 
 func main() {
-	var (
-		conf Conf
-		err  error
-		svc  interface{}
-	)
-	NewConf(confPath, &conf)
-	log.Init(conf.LogPath, conf.LogLevel)
-	if mw.IsWorker() {
-		svc = service.NewService()
-	}
-
-	// new GRPC Server
-	grpcServer, err := transport.Listen(grpcAddr)
+	log.Init(logPath, logLevel)
+	r := service.NewResource(dataDir)
+	conn, err := transport.Dial(diskqueueAddr)
 	if err != nil {
 		log.Fatal(err)
 	}
-	if mw.IsWorker() {
-		grpcServer.Register(searchdpb.SearchdGrpcServiceDesc, svc)
+	dqClient := diskqueuepb.NewDiskqueueGrpcClient(conn)
+	svc := service.NewService(r, dqClient)
+	clusterSvc := service.NewAdmin(r, dqClient)
+	server, err := transport.Listen(
+		listenAddr,
+		tropt.WithUnaryServerMiddleware(
+			tracing.ServerMiddleware,
+			metrics.Middleware,
+		),
+	)
+	if err != nil {
+		log.Fatal(err)
 	}
-
-	// run with master-worker
-	mw.Run(mw.WithServer(grpcServer))
+	clusterServer, err := transport.Listen(
+		clusterAddr,
+		tropt.WithUnaryServerMiddleware(
+			tracing.ServerMiddleware,
+			metrics.Middleware,
+		),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	server.Register(searchdpb.SearchdGrpcServiceDesc, svc)
+	clusterServer.Register(searchdpb.SearchdAdminGrpcServiceDesc, clusterSvc)
+	mw.Run(
+		mw.WithServer(server),
+		mw.WithServer(clusterServer),
+		mw.WithPIDPath(pidPath),
+	)
 }

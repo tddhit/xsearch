@@ -17,7 +17,7 @@ import (
 	"github.com/tddhit/tools/mmap"
 	"github.com/tddhit/xsearch/indexer/option"
 	"github.com/tddhit/xsearch/indexer/segment"
-	"github.com/tddhit/xsearch/xsearchpb"
+	xsearchpb "github.com/tddhit/xsearch/pb"
 )
 
 var (
@@ -93,7 +93,7 @@ func (idx *Indexer) createSegment(shardingID int) *segment.Segment {
 	idx.segmentID[shardingID]++
 	idx.mu[shardingID].Unlock()
 
-	return segment.New(vocabPath, invertPath, mmap.CREATE)
+	return segment.New(vocabPath, invertPath, mmap.CREATE, mmap.RANDOM)
 }
 
 func (idx *Indexer) loadSegments() {
@@ -136,7 +136,8 @@ func (idx *Indexer) loadSegments() {
 				log.Fatalf("%s is not exist.", invertPath)
 			}
 			idx.segs[k] = append(idx.segs[k],
-				segment.New(vocabPath, invertPath, mmap.RDONLY))
+				segment.New(vocabPath, invertPath, mmap.RDONLY, mmap.RANDOM),
+			)
 		}
 		idx.segmentID[k] = len(v)
 	}

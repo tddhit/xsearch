@@ -3,45 +3,41 @@ package service
 import (
 	"context"
 
+	diskqueuepb "github.com/tddhit/diskqueue/pb"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/tddhit/xsearch/searchd/searchdpb"
+	searchdpb "github.com/tddhit/xsearch/searchd/pb"
 )
 
 type admin struct {
 	resource *resource
+	dqClient diskqueuepb.DiskqueueGrpcClient
 }
 
-func NewAdmin(r *resource) *admin {
-	a := &admin{
+func NewAdmin(r *resource, c diskqueuepb.DiskqueueGrpcClient) *admin {
+	return &admin{
 		resource: r,
+		dqClient: c,
 	}
-	return a
 }
 
 func (a *admin) CreateShard(
 	ctx context.Context,
-	in *searchdpb.CreateShardReq) (*searchdpb.CreateShardRsp, error) {
+	req *searchdpb.CreateShardReq) (*searchdpb.CreateShardRsp, error) {
 
-	_, created := a.resource.getOrCreateShard(in.Namespace, in.ShardID)
-	if !created {
-		return nil, status.Error(
-			codes.AlreadyExists,
-			fmt.Sprintf("namespace(%d).shardID(%d)", in.Namespace, in.ShardID),
-		)
+	if _, err := a.resource.createShard(req.ShardID, a.dqClient); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 	return &searchdpb.CreateShardRsp{}, nil
 }
 
-func (a *admin) MigrateShard(
+func (a *admin) RemoveShard(
 	ctx context.Context,
-	in *searchdpb.MigrateShardReq) (*searchdpb.MigrateShardRsp, error) {
+	req *searchdpb.RemoveShardReq) (*searchdpb.RemoveShardRsp, error) {
 
-}
-
-func (a *admin) ReplicateShard(
-	ctx context.Context,
-	in *searchdpb.ReplicateShardReq) (*searchdpb.ReplicateShardRsp, error) {
-
+	if err := a.resource.removeShard(req.ShardID); err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	return &searchdpb.RemoveShardRsp{}, nil
 }

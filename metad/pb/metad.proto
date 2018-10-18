@@ -1,9 +1,9 @@
 syntax = "proto3";
 
-package metad;
+package metadpb;
 
 service Metad {
-    rpc RegisterClient (stream RegisterClientReq) returns (stream RegisterClientRsp) {}
+    rpc RegisterProxy (stream RegisterProxyReq) returns (stream RegisterProxyRsp) {}
     rpc RegisterNode (stream RegisterNodeReq) returns (stream RegisterNodeRsp) {}
     rpc CreateNamespace (CreateNamespaceReq) returns (CreateNamespaceRsp) {}
     rpc DropNamespace (DropNamespaceReq) returns (DropNamespaceRsp) {}
@@ -16,18 +16,19 @@ service Metad {
     rpc Commit (CommitReq) returns (CommitRsp) {}
 }
 
-message RegisterClientReq {
-    string namespace = 1;
+message RegisterProxyReq {
 }
 
-message RegisterClientRsp {
-    message ShardGroup {
-        repeated Shard replicas = 1;
-    }
+message RegisterProxyRsp {
     message Shard {
-        string nodeAddr = 1;
+        uint32 groupID = 1;
+        uint32 replicaID = 2;
+        string nodeAddr = 3;
     }
-    repeated ShardGroup groups = 1;
+    string namespace = 1;
+    uint32 shardNum = 2;
+    uint32 replicaFactor = 3;
+    repeated Shard shards = 4;
 }
 
 message RegisterNodeReq {

@@ -60,9 +60,7 @@ func (d *todo) buildCreateStages() {
 		_, err := d.from.client.CreateShard(
 			context.Background(),
 			&searchdpb.CreateShardReq{
-				Namespace: d.shard.table.namespace,
-				ShardID:   uint32(d.shard.id),
-				ReplicaID: uint32(d.shard.replicaID),
+				ShardID: d.shard.id,
 			},
 		)
 		return err
@@ -82,37 +80,7 @@ func (d *todo) buildMigrateStages() {
 		_, err := d.to.client.CreateShard(
 			context.Background(),
 			&searchdpb.CreateShardReq{
-				Namespace: d.shard.table.namespace,
-				ShardID:   uint32(d.shard.id),
-				ReplicaID: uint32(d.shard.replicaID),
-			},
-		)
-		return err
-	})
-
-	d.stages = append(d.stages, func() error {
-		_, err := d.from.client.SyncShard(
-			context.Background(),
-			&searchdpb.SyncShardReq{
-				Namespace: d.shard.table.namespace,
-				ShardID:   uint32(d.shard.id),
-				ReplicaID: uint32(d.shard.replicaID),
-				FromNode:  d.from.adminAddr,
-				ToNode:    d.to.adminAddr,
-			},
-		)
-		return err
-	})
-
-	d.stages = append(d.stages, func() error {
-		_, err := d.to.client.SyncShard(
-			context.Background(),
-			&searchdpb.SyncShardReq{
-				Namespace: d.shard.table.namespace,
-				ShardID:   uint32(d.shard.id),
-				ReplicaID: uint32(d.shard.replicaID),
-				FromNode:  d.from.adminAddr,
-				ToNode:    d.to.adminAddr,
+				ShardID: d.shard.id,
 			},
 		)
 		return err
@@ -126,34 +94,11 @@ func (d *todo) buildMigrateStages() {
 		return nil
 	})
 
-	if d.shard.replicaID == 0 {
-		d.stages = append(d.stages, func() error {
-			for _, s := range d.table.groups[d.shard.id].replicas {
-				_, err := s.node.client.SyncShard(
-					context.Background(),
-					&searchdpb.SyncShardReq{
-						Namespace: s.table.namespace,
-						ShardID:   uint32(s.id),
-						ReplicaID: uint32(s.replicaID),
-						FromNode:  d.to.adminAddr,
-						ToNode:    s.node.adminAddr,
-					},
-				)
-				if err != nil {
-					return err
-				}
-			}
-			return nil
-		})
-	}
-
 	d.stages = append(d.stages, func() error {
 		_, err := d.from.client.RemoveShard(
 			context.Background(),
 			&searchdpb.RemoveShardReq{
-				Namespace: d.shard.table.namespace,
-				ShardID:   uint32(d.shard.id),
-				ReplicaID: uint32(d.shard.replicaID),
+				ShardID: d.shard.id,
 			},
 		)
 		return err

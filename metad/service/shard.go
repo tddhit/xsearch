@@ -24,7 +24,8 @@ type shardGroup struct {
 }
 
 type shard struct {
-	id        int
+	id        string
+	groupID   int
 	replicaID int // 0 is primary shard, 1...N is replica shard
 	table     *shardTable
 	node      *node
@@ -96,7 +97,7 @@ func (t *shardTable) setShard(s *shard) {
 	t.Lock()
 	defer t.Unlock()
 
-	t.groups[s.id].replicas[s.replicaID] = s
+	t.groups[s.groupID].replicas[s.replicaID] = s
 }
 
 func (t *shardTable) getShard(shardID, replicaID int) (*shard, error) {
@@ -140,7 +141,8 @@ func (t *shardTable) firstAllocate() error {
 				k = 0
 			}
 			s := &shard{
-				id:        i,
+				id:        fmt.Sprintf("%s.%d.%d", t.namespace, i, j),
+				groupID:   i,
 				replicaID: j,
 				table:     t,
 				node:      t.nodes[k],

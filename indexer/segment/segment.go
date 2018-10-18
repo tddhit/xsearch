@@ -12,8 +12,9 @@ import (
 	"github.com/tddhit/bindex"
 	"github.com/tddhit/tools/log"
 	"github.com/tddhit/tools/mmap"
+
 	"github.com/tddhit/xsearch/internal/types"
-	"github.com/tddhit/xsearch/xsearchpb"
+	xsearchpb "github.com/tddhit/xsearch/pb"
 )
 
 const (
@@ -47,12 +48,12 @@ type Segment struct {
 	persist      int32
 }
 
-func New(vocabPath, invertPath string, mode int) *Segment {
-	vocab, err := bindex.New(vocabPath, mode)
+func New(vocabPath, invertPath string, mode, advise int) *Segment {
+	vocab, err := bindex.New(vocabPath, mode, advise)
 	if err != nil {
 		log.Fatal(err)
 	}
-	invert, err := mmap.New(invertPath, maxMapSize, mode)
+	invert, err := mmap.New(invertPath, maxMapSize, mode, advise)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -134,12 +135,21 @@ func (s *Segment) lookup(key []byte, doc2BM25 map[uint64]float32) error {
 		return errNotFoundKey
 	}
 	off := int64(binary.LittleEndian.Uint64(value))
-	count := s.invert.Uint64At(off)
+	count, err := s.invert.Uint64At(off)
+	if err != nil {
+		return err
+	}
 	off += 8
 	for i := uint64(0); i < count; i++ {
-		docID := s.invert.Uint64At(off)
+		docID, err := s.invert.Uint64At(off)
+		if err != nil {
+			return err
+		}
 		off += 8
-		bits := s.invert.Uint32At(off)
+		bits, err := s.invert.Uint32At(off)
+		if err != nil {
+			return err
+		}
 		bm25 := math.Float32frombits(bits)
 		off += 4
 		doc2BM25[docID] += bm25

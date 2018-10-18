@@ -1,50 +1,78 @@
 package service
 
 import (
+	"context"
 	"sync"
 
-	"github.com/tddhit/hunter/indexer"
+	"github.com/gogo/protobuf/proto"
+	"github.com/lunny/log"
+	diskqueuepb "github.com/tddhit/diskqueue/pb"
+
+	"github.com/tddhit/xsearch/indexer"
+	indexerOpt "github.com/tddhit/xsearch/indexer/option"
+	searchdpb "github.com/tddhit/xsearch/searchd/pb"
 )
 
 type shard struct {
-	dataDir   string
-	namespace string
-	id        int
-	indexer   *indexer.Indexer
-	blog      *binLog
-	wg        sync.WaitGroup
+	id       string
+	indexer  *indexer.Indexer
+	dqClient diskqueuepb.DiskqueueGrpcClient
+	ctx      context.Context
+	cancel   context.CancelFunc
+	wg       sync.WaitGroup
 }
 
-func newShard(dataDir, namespace string, id int) *shard {
-	return &shard{
-		dataDir:   dataDir,
-		namespace: namespace,
-		id:        id,
-		indexer:   indexer.New(),
-		blog:      newBinLog(dataDir, fmt.Sprintf("%s.%d", namespace, id)),
+func newShard(id, dir string, c diskqueuepb.DiskqueueGrpcClient) *shard {
+	s := &shard{
+		id:       id,
+		indexer:  indexer.New(indexerOpt.WithIndexDir(dir)),
+		dqClient: c,
+	}
+	s.ctx, s.cancel = context.WithCancel(context.Background())
+	s.wg.Add(1)
+	go func() {
+		s.indexLoop()
+		s.wg.Done()
+	}()
+	return s
+}
+
+func (s *shard) indexLoop() {
+	for {
+		rsp, err := s.dqClient.Pop(s.ctx, &diskqueuepb.PopRequest{
+			Topic: s.id,
+		})
+		if err != nil {
+			log.Error(err)
+			break
+		}
+		msg := rsp.GetMessage()
+		if msg == nil {
+			continue
+		}
+		data := msg.GetData()
+		cmd := &searchdpb.Command{}
+		if err := proto.Unmarshal(data, cmd); err != nil {
+			log.Error(err)
+			continue
+		}
+		switch cmd.Type {
+		case searchdpb.Command_INDEX:
+			if doc, ok := cmd.DocOneof.(*searchdpb.Command_Doc); ok {
+				if err := s.indexer.IndexDocument(doc.Doc); err != nil {
+					log.Error(err)
+				}
+			}
+		case searchdpb.Command_REMOVE:
+			if docID, ok := cmd.DocOneof.(*searchdpb.Command_DocID); ok {
+				s.indexer.RemoveDocument(docID.DocID)
+			}
+		}
 	}
 }
 
-func (s *shard) addDoc(doc *xsearchpb.Document) {
-	s.indexer.IndexDocument(doc)
-	s.blog.WriteLog(&pb.LogEntry{
-		Action: pb.ADD,
-		Doc:    doc,
-	})
-}
-
-func (s *shard) removeDoc(docID int) {
-	s.indexer.RemoveDocument(docID)
-	s.blog.WriteLog(&pb.LogEntry{
-		Action: pb.REMOVE,
-		DocID:  docID,
-	})
-}
-
-func (s *shard) search(
-	query *xsearchpb.Query,
-	start uint64,
-	count int32) ([]*xsearchpb.Document, error) {
-
-	return s.indexer.Search(query, start, count)
+func (s *shard) close() {
+	s.cancel()
+	s.wg.Wait()
+	s.indexer.Close()
 }
