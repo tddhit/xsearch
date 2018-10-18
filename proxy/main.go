@@ -4,64 +4,45 @@ package main
 
 import (
 	"flag"
+
 	"github.com/tddhit/box/mw"
 	"github.com/tddhit/box/transport"
 	"github.com/tddhit/tools/log"
-	. "github.com/tddhit/xsearch/proxy/conf"
+
+	proxypb "github.com/tddhit/xsearch/proxy/pb"
 	"github.com/tddhit/xsearch/proxy/service"
-	pb "github.com/tddhit/xsearch/proxy/pb"
 )
 
 var (
-	confPath   string
-	grpcAddr string
-	httpAddr string
+	httpAddr  string
+	metadAddr string
+	pidPath   string
+	logPath   string
+	logLevel  int
 )
 
 func init() {
-	flag.StringVar(&confPath, "conf-path", "conf/proxy.yml", "config file")
-	flag.StringVar(&grpcAddr, "grpc-addr", "grpc://127.0.0.1:9000", "grpc listen address")
-	flag.StringVar(&httpAddr, "http-addr", "http://127.0.0.1:9010", "http listen address")
+	flag.StringVar(&httpAddr, "http-addr", "http://:9010",
+		"client communication address")
+	flag.StringVar(&metadAddr, "metad-addr", "grpc://:9020",
+		"metad communication address")
+	flag.StringVar(&pidPath, "pidpath", "/var/searchd.pid", "pid path")
+	flag.StringVar(&logPath, "logpath", "", "log file path")
+	flag.IntVar(&logLevel, "loglevel", 1,
+		"log level (Trace:1, Debug:2, Info:3, Error:5)")
 	flag.Parse()
 }
 
 func main() {
-	var (
-		conf  	Conf
-		err 	error
-		svc interface{}
-	)
-	NewConf(confPath, &conf)
-	log.Init(conf.LogPath, conf.LogLevel)
-	if mw.IsWorker() { 
-		svc = service.NewService()
-	}
-
-	
-	// new GRPC Server
-	grpcServer, err := transport.Listen(grpcAddr)
+	log.Init(logPath, logLevel)
+	svc, err := service.NewService(metadAddr)
 	if err != nil {
 		log.Fatal(err)
 	}
-	if mw.IsWorker() { 
-		grpcServer.Register(pb.ProxyGrpcServiceDesc, svc)
-	}
-	
-
-
-	
-	// new HTTP Server
 	httpServer, err := transport.Listen(httpAddr)
 	if err != nil {
 		log.Fatal(err)
 	}
-	if mw.IsWorker() { 
-		httpServer.Register(pb.ProxyHttpServiceDesc, svc)
-	}
-	
-
-	
-
-	// run with master-worker
-	mw.Run(mw.WithServer(grpcServer), mw.WithServer(httpServer))
+	httpServer.Register(proxypb.ProxyHttpServiceDesc, svc)
+	mw.Run(mw.WithServer(httpServer))
 }

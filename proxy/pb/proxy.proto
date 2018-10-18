@@ -1,22 +1,55 @@
 syntax = "proto3";
 
-package proxy;
+package proxypb;
 
 import "google/api/annotations.proto";
+import "xsearch/pb/xsearch.proto";
 
 service Proxy {
-  rpc Echo (EchoRequest) returns (EchoReply) {
-		option (google.api.http) = {
-			post: "/echo"
-			body: "*"
-		};
-  }
+    rpc IndexDoc (IndexDocReq) returns (IndexDocRsp) {
+        option (google.api.http) = {
+            post: "/indexDoc"
+            body: "*"
+        };
+    }
+    rpc RemoveDoc (RemoveDocReq) returns (RemoveDocRsp) {
+        option (google.api.http) = {
+            post: "/removeDoc"
+            body: "*"
+        };
+    }
+    rpc Search (SearchReq) returns (SearchRsp) {
+        option (google.api.http) = {
+            post: "/search"
+            body: "*"
+        };
+    }
 }
 
-message EchoRequest {
-  string msg = 1;
+message IndexDocReq {
+    string namespace = 1;
+    xsearchpb.Document doc = 2;
 }
 
-message EchoReply {
-  string msg = 1;
+message IndexDocRsp {
+    uint64 docID = 1;
+}
+
+message RemoveDocReq {
+    string namespace = 1;
+    uint64 docID = 2;
+}
+
+message RemoveDocRsp {
+}
+
+message SearchReq {
+    string namespace = 1;
+    xsearchpb.Query query = 2;
+    uint64 start = 3;
+    uint32 count = 4;
+}
+
+message SearchRsp {
+    repeated xsearchpb.Document docs = 1;
 }
