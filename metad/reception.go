@@ -1,4 +1,4 @@
-package service
+package metad
 
 import (
 	"fmt"

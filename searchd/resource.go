@@ -1,4 +1,4 @@
-package service
+package searchd
 
 import (
 	"errors"
@@ -18,7 +18,7 @@ type resource struct {
 	shards map[string]*shard
 }
 
-func NewResource(dir string) *resource {
+func newResource(dir string) *resource {
 	return &resource{
 		dir:    dir,
 		shards: make(map[string]*shard),

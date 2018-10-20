@@ -9,7 +9,7 @@ service Metad {
     rpc DropNamespace (DropNamespaceReq) returns (DropNamespaceRsp) {}
     rpc AddNodeToNamespace (AddNodeToNamespaceReq) returns (AddNodeToNamespaceRsp) {}
     rpc RemoveNodeFromNamespace (RemoveNodeFromNamespaceReq) returns (RemoveNodeFromNamespaceRsp) {}
-    rpc ReplaceNodeInNamespace (ReplaceNodeInNamespaceReq) returns (ReplaceNodeInNamespaceRsp) {}
+    //rpc ReplaceNodeInNamespace (ReplaceNodeInNamespaceReq) returns (ReplaceNodeInNamespaceRsp) {}
     rpc AutoBalance (AutoBalanceReq) returns (AutoBalanceRsp) {}
     rpc MigrateShard (MigrateShardReq) returns (MigrateShardRsp) {}
     rpc Info (InfoReq) returns (InfoRsp) {}
@@ -21,29 +21,30 @@ message RegisterClientReq {
 }
 
 message RegisterClientRsp {
-    message Shard {
-        uint32 groupID = 1;
-        uint32 replicaID = 2;
-        string nodeAddr = 3;
-    }
-    string namespace = 1;
-    uint32 shardNum = 2;
-    uint32 replicaFactor = 3;
-    repeated Shard shards = 4;
+    Metadata table = 1;
 }
 
 message RegisterNodeReq {
-    message Shard {
-        string namespace = 1; 
-        uint32 id = 2;
-        uint32 replicaID = 3;
+    enum Type {
+        RegisterShard = 0;
+        UnregisterShard = 1;
+        Heartbeat = 2;
     }
-    string addr = 1;
-    string adminAddr = 2;
-    Shard shard = 3;
+    Type type = 1;
+    string addr = 2;
+    string namespace = 3;
+    uint32 groupID = 4;
+    uint32 replicaID = 5;
+    uint32 todoID = 6;
 }
 
 message RegisterNodeRsp {
+    enum Type {
+        CreateShard = 0;
+        RemoveShard = 1;
+    }
+    Type type = 1;
+    string shardID = 2;
 }
 
 message CreateNamespaceReq {
@@ -119,4 +120,16 @@ message CommitReq {
 }
 
 message CommitRsp {
+}
+
+message Metadata {
+    message Shard {
+        uint32 groupID = 1;
+        uint32 replicaID = 2;
+        string nodeAddr = 3;
+    }
+    string namespace = 1;
+    uint32 shardNum = 2;
+    uint32 replicaFactor = 3;
+    repeated Shard shards = 4;
 }

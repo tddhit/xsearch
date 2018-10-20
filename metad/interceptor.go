@@ -1,4 +1,4 @@
-package service
+package metad
 
 import (
 	"context"
@@ -16,11 +16,10 @@ type contextKey struct {
 }
 
 var (
-	tableContextKey  = &contextKey{"offline-table"}
-	onlineContextKey = &contextKey{"online-table"}
+	tableContextKey = &contextKey{"table"}
 )
 
-func CheckNamespaceWithUnary(s *service) interceptor.UnaryServerMiddleware {
+func CheckParams(s *service) interceptor.UnaryServerMiddleware {
 	return func(next interceptor.UnaryHandler) interceptor.UnaryHandler {
 		return func(ctx context.Context, req interface{},
 			info *common.UnaryServerInfo) (interface{}, error) {
@@ -47,12 +46,7 @@ func CheckNamespaceWithUnary(s *service) interceptor.UnaryServerMiddleware {
 			if !ok {
 				return nil, status.Error(codes.NotFound, namespace)
 			}
-			online, ok := s.resource.getOnlineTable(namespace)
-			if !ok {
-				return nil, status.Error(codes.NotFound, namespace)
-			}
 			ctx = context.WithValue(ctx, tableContextKey, table)
-			ctx = context.WithValue(ctx, onlineContextKey, online)
 			return next(ctx, req, info)
 		}
 	}

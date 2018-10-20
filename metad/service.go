@@ -1,15 +1,15 @@
-package service
+package metad
 
 import (
 	"context"
 	"io"
 
-	"github.com/tddhit/tools/log"
+	"github.com/urfave/cli"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 
-	metadpb "github.com/tddhit/xsearch/metad/pb"
+	"github.com/tddhit/xsearch/metad/pb"
 )
 
 type service struct {
@@ -17,10 +17,11 @@ type service struct {
 	resource  *resource
 }
 
-func New() *service {
+func NewService(ctx *cli.Context) *service {
+	dataDir := ctx.String("datadir")
 	return &service{
 		reception: newReception(),
-		resource:  newResource(),
+		resource:  newResource(dataDir),
 	}
 }
 
@@ -48,7 +49,7 @@ func (s *service) RegisterClient(stream metadpb.Metad_RegisterClientServer) erro
 		for {
 			req, err := stream.Recv()
 			if err != nil {
-				log.Error(err)
+				client.close()
 				return
 			}
 			client.readC <- req
@@ -66,24 +67,23 @@ func (s *service) RegisterNode(stream metadpb.Metad_RegisterNodeServer) error {
 	if err != nil {
 		return err
 	}
-	n, created, err := s.resource.getOrCreateNode(req.Addr, req.AdminAddr)
+	n, err := s.resource.createNode(req.Addr)
 	if err != nil {
 		return status.Error(codes.Internal, err.Error())
-	}
-	if !created {
-		return status.Error(codes.AlreadyExists, req.Addr)
 	}
 	go func() {
 		for {
 			req, err := stream.Recv()
 			if err != nil {
-				log.Error(err)
+				n.close()
 				return
 			}
 			n.readC <- req
 		}
 	}()
-	n.ioLoop(stream)
+	s.resource.activeShards(n)
+	n.ioLoop(stream, s.resource)
+	s.resource.removeNode(n.addr)
 	return nil
 }
 
@@ -137,30 +137,8 @@ func (s *service) RemoveNodeFromNamespace(
 		return nil, status.Error(codes.NotFound, req.Addr)
 	}
 	table := ctx.Value(tableContextKey).(*shardTable)
-	if err := table.removeNode(node); err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
+	table.removeNode(node.addr)
 	return &metadpb.RemoveNodeFromNamespaceRsp{}, nil
-}
-
-func (s *service) ReplaceNodeInNamespace(
-	ctx context.Context,
-	req *metadpb.ReplaceNodeInNamespaceReq,
-) (*metadpb.ReplaceNodeInNamespaceRsp, error) {
-
-	old, ok := s.resource.getNode(req.OldAddr)
-	if !ok {
-		return nil, status.Error(codes.NotFound, req.OldAddr)
-	}
-	new, ok := s.resource.getNode(req.NewAddr)
-	if !ok {
-		return nil, status.Error(codes.NotFound, req.NewAddr)
-	}
-	table := ctx.Value(tableContextKey).(*shardTable)
-	if err := table.replaceNode(old, new); err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	return &metadpb.ReplaceNodeInNamespaceRsp{}, nil
 }
 
 func (s *service) AutoBalance(
@@ -179,7 +157,6 @@ func (s *service) MigrateShard(
 	req *metadpb.MigrateShardReq) (*metadpb.MigrateShardRsp, error) {
 
 	table := ctx.Value(tableContextKey).(*shardTable)
-	online := ctx.Value(onlineContextKey).(*shardTable)
 	shard, err := table.getShard(int(req.ShardID), int(req.ReplicaID))
 	if err != nil {
 		return nil, status.Error(codes.NotFound, err.Error())
@@ -192,7 +169,7 @@ func (s *service) MigrateShard(
 	if !ok {
 		return nil, status.Error(codes.NotFound, req.ToNode)
 	}
-	if err := table.migrate(shard, from, to, online); err != nil {
+	if err := table.migrate(shard, from, to); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	return &metadpb.MigrateShardRsp{}, nil

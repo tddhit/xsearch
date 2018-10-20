@@ -30,6 +30,55 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
+type RegisterNodeReq_Type int32
+
+const (
+	RegisterNodeReq_RegisterShard   RegisterNodeReq_Type = 0
+	RegisterNodeReq_UnregisterShard RegisterNodeReq_Type = 1
+	RegisterNodeReq_Heartbeat       RegisterNodeReq_Type = 2
+)
+
+var RegisterNodeReq_Type_name = map[int32]string{
+	0: "RegisterShard",
+	1: "UnregisterShard",
+	2: "Heartbeat",
+}
+var RegisterNodeReq_Type_value = map[string]int32{
+	"RegisterShard":   0,
+	"UnregisterShard": 1,
+	"Heartbeat":       2,
+}
+
+func (x RegisterNodeReq_Type) String() string {
+	return proto.EnumName(RegisterNodeReq_Type_name, int32(x))
+}
+func (RegisterNodeReq_Type) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_metad_6f03260f97e5f353, []int{2, 0}
+}
+
+type RegisterNodeRsp_Type int32
+
+const (
+	RegisterNodeRsp_CreateShard RegisterNodeRsp_Type = 0
+	RegisterNodeRsp_RemoveShard RegisterNodeRsp_Type = 1
+)
+
+var RegisterNodeRsp_Type_name = map[int32]string{
+	0: "CreateShard",
+	1: "RemoveShard",
+}
+var RegisterNodeRsp_Type_value = map[string]int32{
+	"CreateShard": 0,
+	"RemoveShard": 1,
+}
+
+func (x RegisterNodeRsp_Type) String() string {
+	return proto.EnumName(RegisterNodeRsp_Type_name, int32(x))
+}
+func (RegisterNodeRsp_Type) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_metad_6f03260f97e5f353, []int{3, 0}
+}
+
 type RegisterClientReq struct {
 	Namespace            string   `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -41,7 +90,7 @@ func (m *RegisterClientReq) Reset()         { *m = RegisterClientReq{} }
 func (m *RegisterClientReq) String() string { return proto.CompactTextString(m) }
 func (*RegisterClientReq) ProtoMessage()    {}
 func (*RegisterClientReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metad_22c00947c208e90e, []int{0}
+	return fileDescriptor_metad_6f03260f97e5f353, []int{0}
 }
 func (m *RegisterClientReq) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RegisterClientReq.Unmarshal(m, b)
@@ -69,20 +118,17 @@ func (m *RegisterClientReq) GetNamespace() string {
 }
 
 type RegisterClientRsp struct {
-	Namespace            string                     `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	ShardNum             uint32                     `protobuf:"varint,2,opt,name=shardNum,proto3" json:"shardNum,omitempty"`
-	ReplicaFactor        uint32                     `protobuf:"varint,3,opt,name=replicaFactor,proto3" json:"replicaFactor,omitempty"`
-	Shards               []*RegisterClientRsp_Shard `protobuf:"bytes,4,rep,name=shards,proto3" json:"shards,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}                   `json:"-"`
-	XXX_unrecognized     []byte                     `json:"-"`
-	XXX_sizecache        int32                      `json:"-"`
+	Table                *Metadata `protobuf:"bytes,1,opt,name=table,proto3" json:"table,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}  `json:"-"`
+	XXX_unrecognized     []byte    `json:"-"`
+	XXX_sizecache        int32     `json:"-"`
 }
 
 func (m *RegisterClientRsp) Reset()         { *m = RegisterClientRsp{} }
 func (m *RegisterClientRsp) String() string { return proto.CompactTextString(m) }
 func (*RegisterClientRsp) ProtoMessage()    {}
 func (*RegisterClientRsp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metad_22c00947c208e90e, []int{1}
+	return fileDescriptor_metad_6f03260f97e5f353, []int{1}
 }
 func (m *RegisterClientRsp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RegisterClientRsp.Unmarshal(m, b)
@@ -102,102 +148,30 @@ func (m *RegisterClientRsp) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RegisterClientRsp proto.InternalMessageInfo
 
-func (m *RegisterClientRsp) GetNamespace() string {
+func (m *RegisterClientRsp) GetTable() *Metadata {
 	if m != nil {
-		return m.Namespace
-	}
-	return ""
-}
-
-func (m *RegisterClientRsp) GetShardNum() uint32 {
-	if m != nil {
-		return m.ShardNum
-	}
-	return 0
-}
-
-func (m *RegisterClientRsp) GetReplicaFactor() uint32 {
-	if m != nil {
-		return m.ReplicaFactor
-	}
-	return 0
-}
-
-func (m *RegisterClientRsp) GetShards() []*RegisterClientRsp_Shard {
-	if m != nil {
-		return m.Shards
+		return m.Table
 	}
 	return nil
 }
 
-type RegisterClientRsp_Shard struct {
-	GroupID              uint32   `protobuf:"varint,1,opt,name=groupID,proto3" json:"groupID,omitempty"`
-	ReplicaID            uint32   `protobuf:"varint,2,opt,name=replicaID,proto3" json:"replicaID,omitempty"`
-	NodeAddr             string   `protobuf:"bytes,3,opt,name=nodeAddr,proto3" json:"nodeAddr,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *RegisterClientRsp_Shard) Reset()         { *m = RegisterClientRsp_Shard{} }
-func (m *RegisterClientRsp_Shard) String() string { return proto.CompactTextString(m) }
-func (*RegisterClientRsp_Shard) ProtoMessage()    {}
-func (*RegisterClientRsp_Shard) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metad_22c00947c208e90e, []int{1, 0}
-}
-func (m *RegisterClientRsp_Shard) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_RegisterClientRsp_Shard.Unmarshal(m, b)
-}
-func (m *RegisterClientRsp_Shard) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_RegisterClientRsp_Shard.Marshal(b, m, deterministic)
-}
-func (dst *RegisterClientRsp_Shard) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RegisterClientRsp_Shard.Merge(dst, src)
-}
-func (m *RegisterClientRsp_Shard) XXX_Size() int {
-	return xxx_messageInfo_RegisterClientRsp_Shard.Size(m)
-}
-func (m *RegisterClientRsp_Shard) XXX_DiscardUnknown() {
-	xxx_messageInfo_RegisterClientRsp_Shard.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_RegisterClientRsp_Shard proto.InternalMessageInfo
-
-func (m *RegisterClientRsp_Shard) GetGroupID() uint32 {
-	if m != nil {
-		return m.GroupID
-	}
-	return 0
-}
-
-func (m *RegisterClientRsp_Shard) GetReplicaID() uint32 {
-	if m != nil {
-		return m.ReplicaID
-	}
-	return 0
-}
-
-func (m *RegisterClientRsp_Shard) GetNodeAddr() string {
-	if m != nil {
-		return m.NodeAddr
-	}
-	return ""
-}
-
 type RegisterNodeReq struct {
-	Addr                 string                 `protobuf:"bytes,1,opt,name=addr,proto3" json:"addr,omitempty"`
-	AdminAddr            string                 `protobuf:"bytes,2,opt,name=adminAddr,proto3" json:"adminAddr,omitempty"`
-	Shard                *RegisterNodeReq_Shard `protobuf:"bytes,3,opt,name=shard,proto3" json:"shard,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}               `json:"-"`
-	XXX_unrecognized     []byte                 `json:"-"`
-	XXX_sizecache        int32                  `json:"-"`
+	Type                 RegisterNodeReq_Type `protobuf:"varint,1,opt,name=type,proto3,enum=metadpb.RegisterNodeReq_Type" json:"type,omitempty"`
+	Addr                 string               `protobuf:"bytes,2,opt,name=addr,proto3" json:"addr,omitempty"`
+	Namespace            string               `protobuf:"bytes,3,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	GroupID              uint32               `protobuf:"varint,4,opt,name=groupID,proto3" json:"groupID,omitempty"`
+	ReplicaID            uint32               `protobuf:"varint,5,opt,name=replicaID,proto3" json:"replicaID,omitempty"`
+	TodoID               uint32               `protobuf:"varint,6,opt,name=todoID,proto3" json:"todoID,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
+	XXX_unrecognized     []byte               `json:"-"`
+	XXX_sizecache        int32                `json:"-"`
 }
 
 func (m *RegisterNodeReq) Reset()         { *m = RegisterNodeReq{} }
 func (m *RegisterNodeReq) String() string { return proto.CompactTextString(m) }
 func (*RegisterNodeReq) ProtoMessage()    {}
 func (*RegisterNodeReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metad_22c00947c208e90e, []int{2}
+	return fileDescriptor_metad_6f03260f97e5f353, []int{2}
 }
 func (m *RegisterNodeReq) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RegisterNodeReq.Unmarshal(m, b)
@@ -217,6 +191,13 @@ func (m *RegisterNodeReq) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RegisterNodeReq proto.InternalMessageInfo
 
+func (m *RegisterNodeReq) GetType() RegisterNodeReq_Type {
+	if m != nil {
+		return m.Type
+	}
+	return RegisterNodeReq_RegisterShard
+}
+
 func (m *RegisterNodeReq) GetAddr() string {
 	if m != nil {
 		return m.Addr
@@ -224,85 +205,47 @@ func (m *RegisterNodeReq) GetAddr() string {
 	return ""
 }
 
-func (m *RegisterNodeReq) GetAdminAddr() string {
-	if m != nil {
-		return m.AdminAddr
-	}
-	return ""
-}
-
-func (m *RegisterNodeReq) GetShard() *RegisterNodeReq_Shard {
-	if m != nil {
-		return m.Shard
-	}
-	return nil
-}
-
-type RegisterNodeReq_Shard struct {
-	Namespace            string   `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
-	Id                   uint32   `protobuf:"varint,2,opt,name=id,proto3" json:"id,omitempty"`
-	ReplicaID            uint32   `protobuf:"varint,3,opt,name=replicaID,proto3" json:"replicaID,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *RegisterNodeReq_Shard) Reset()         { *m = RegisterNodeReq_Shard{} }
-func (m *RegisterNodeReq_Shard) String() string { return proto.CompactTextString(m) }
-func (*RegisterNodeReq_Shard) ProtoMessage()    {}
-func (*RegisterNodeReq_Shard) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metad_22c00947c208e90e, []int{2, 0}
-}
-func (m *RegisterNodeReq_Shard) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_RegisterNodeReq_Shard.Unmarshal(m, b)
-}
-func (m *RegisterNodeReq_Shard) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_RegisterNodeReq_Shard.Marshal(b, m, deterministic)
-}
-func (dst *RegisterNodeReq_Shard) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RegisterNodeReq_Shard.Merge(dst, src)
-}
-func (m *RegisterNodeReq_Shard) XXX_Size() int {
-	return xxx_messageInfo_RegisterNodeReq_Shard.Size(m)
-}
-func (m *RegisterNodeReq_Shard) XXX_DiscardUnknown() {
-	xxx_messageInfo_RegisterNodeReq_Shard.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_RegisterNodeReq_Shard proto.InternalMessageInfo
-
-func (m *RegisterNodeReq_Shard) GetNamespace() string {
+func (m *RegisterNodeReq) GetNamespace() string {
 	if m != nil {
 		return m.Namespace
 	}
 	return ""
 }
 
-func (m *RegisterNodeReq_Shard) GetId() uint32 {
+func (m *RegisterNodeReq) GetGroupID() uint32 {
 	if m != nil {
-		return m.Id
+		return m.GroupID
 	}
 	return 0
 }
 
-func (m *RegisterNodeReq_Shard) GetReplicaID() uint32 {
+func (m *RegisterNodeReq) GetReplicaID() uint32 {
 	if m != nil {
 		return m.ReplicaID
 	}
 	return 0
 }
 
+func (m *RegisterNodeReq) GetTodoID() uint32 {
+	if m != nil {
+		return m.TodoID
+	}
+	return 0
+}
+
 type RegisterNodeRsp struct {
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
+	Type                 RegisterNodeRsp_Type `protobuf:"varint,1,opt,name=type,proto3,enum=metadpb.RegisterNodeRsp_Type" json:"type,omitempty"`
+	ShardID              string               `protobuf:"bytes,2,opt,name=shardID,proto3" json:"shardID,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
+	XXX_unrecognized     []byte               `json:"-"`
+	XXX_sizecache        int32                `json:"-"`
 }
 
 func (m *RegisterNodeRsp) Reset()         { *m = RegisterNodeRsp{} }
 func (m *RegisterNodeRsp) String() string { return proto.CompactTextString(m) }
 func (*RegisterNodeRsp) ProtoMessage()    {}
 func (*RegisterNodeRsp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metad_22c00947c208e90e, []int{3}
+	return fileDescriptor_metad_6f03260f97e5f353, []int{3}
 }
 func (m *RegisterNodeRsp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RegisterNodeRsp.Unmarshal(m, b)
@@ -322,6 +265,20 @@ func (m *RegisterNodeRsp) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RegisterNodeRsp proto.InternalMessageInfo
 
+func (m *RegisterNodeRsp) GetType() RegisterNodeRsp_Type {
+	if m != nil {
+		return m.Type
+	}
+	return RegisterNodeRsp_CreateShard
+}
+
+func (m *RegisterNodeRsp) GetShardID() string {
+	if m != nil {
+		return m.ShardID
+	}
+	return ""
+}
+
 type CreateNamespaceReq struct {
 	Namespace            string   `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	ShardNum             uint32   `protobuf:"varint,2,opt,name=shardNum,proto3" json:"shardNum,omitempty"`
@@ -335,7 +292,7 @@ func (m *CreateNamespaceReq) Reset()         { *m = CreateNamespaceReq{} }
 func (m *CreateNamespaceReq) String() string { return proto.CompactTextString(m) }
 func (*CreateNamespaceReq) ProtoMessage()    {}
 func (*CreateNamespaceReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metad_22c00947c208e90e, []int{4}
+	return fileDescriptor_metad_6f03260f97e5f353, []int{4}
 }
 func (m *CreateNamespaceReq) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateNamespaceReq.Unmarshal(m, b)
@@ -386,7 +343,7 @@ func (m *CreateNamespaceRsp) Reset()         { *m = CreateNamespaceRsp{} }
 func (m *CreateNamespaceRsp) String() string { return proto.CompactTextString(m) }
 func (*CreateNamespaceRsp) ProtoMessage()    {}
 func (*CreateNamespaceRsp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metad_22c00947c208e90e, []int{5}
+	return fileDescriptor_metad_6f03260f97e5f353, []int{5}
 }
 func (m *CreateNamespaceRsp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CreateNamespaceRsp.Unmarshal(m, b)
@@ -417,7 +374,7 @@ func (m *DropNamespaceReq) Reset()         { *m = DropNamespaceReq{} }
 func (m *DropNamespaceReq) String() string { return proto.CompactTextString(m) }
 func (*DropNamespaceReq) ProtoMessage()    {}
 func (*DropNamespaceReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metad_22c00947c208e90e, []int{6}
+	return fileDescriptor_metad_6f03260f97e5f353, []int{6}
 }
 func (m *DropNamespaceReq) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DropNamespaceReq.Unmarshal(m, b)
@@ -454,7 +411,7 @@ func (m *DropNamespaceRsp) Reset()         { *m = DropNamespaceRsp{} }
 func (m *DropNamespaceRsp) String() string { return proto.CompactTextString(m) }
 func (*DropNamespaceRsp) ProtoMessage()    {}
 func (*DropNamespaceRsp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metad_22c00947c208e90e, []int{7}
+	return fileDescriptor_metad_6f03260f97e5f353, []int{7}
 }
 func (m *DropNamespaceRsp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_DropNamespaceRsp.Unmarshal(m, b)
@@ -487,7 +444,7 @@ func (m *AddNodeToNamespaceReq) Reset()         { *m = AddNodeToNamespaceReq{} }
 func (m *AddNodeToNamespaceReq) String() string { return proto.CompactTextString(m) }
 func (*AddNodeToNamespaceReq) ProtoMessage()    {}
 func (*AddNodeToNamespaceReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metad_22c00947c208e90e, []int{8}
+	return fileDescriptor_metad_6f03260f97e5f353, []int{8}
 }
 func (m *AddNodeToNamespaceReq) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AddNodeToNamespaceReq.Unmarshal(m, b)
@@ -538,7 +495,7 @@ func (m *AddNodeToNamespaceRsp) Reset()         { *m = AddNodeToNamespaceRsp{} }
 func (m *AddNodeToNamespaceRsp) String() string { return proto.CompactTextString(m) }
 func (*AddNodeToNamespaceRsp) ProtoMessage()    {}
 func (*AddNodeToNamespaceRsp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metad_22c00947c208e90e, []int{9}
+	return fileDescriptor_metad_6f03260f97e5f353, []int{9}
 }
 func (m *AddNodeToNamespaceRsp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AddNodeToNamespaceRsp.Unmarshal(m, b)
@@ -570,7 +527,7 @@ func (m *RemoveNodeFromNamespaceReq) Reset()         { *m = RemoveNodeFromNamesp
 func (m *RemoveNodeFromNamespaceReq) String() string { return proto.CompactTextString(m) }
 func (*RemoveNodeFromNamespaceReq) ProtoMessage()    {}
 func (*RemoveNodeFromNamespaceReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metad_22c00947c208e90e, []int{10}
+	return fileDescriptor_metad_6f03260f97e5f353, []int{10}
 }
 func (m *RemoveNodeFromNamespaceReq) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RemoveNodeFromNamespaceReq.Unmarshal(m, b)
@@ -614,7 +571,7 @@ func (m *RemoveNodeFromNamespaceRsp) Reset()         { *m = RemoveNodeFromNamesp
 func (m *RemoveNodeFromNamespaceRsp) String() string { return proto.CompactTextString(m) }
 func (*RemoveNodeFromNamespaceRsp) ProtoMessage()    {}
 func (*RemoveNodeFromNamespaceRsp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metad_22c00947c208e90e, []int{11}
+	return fileDescriptor_metad_6f03260f97e5f353, []int{11}
 }
 func (m *RemoveNodeFromNamespaceRsp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RemoveNodeFromNamespaceRsp.Unmarshal(m, b)
@@ -648,7 +605,7 @@ func (m *ReplaceNodeInNamespaceReq) Reset()         { *m = ReplaceNodeInNamespac
 func (m *ReplaceNodeInNamespaceReq) String() string { return proto.CompactTextString(m) }
 func (*ReplaceNodeInNamespaceReq) ProtoMessage()    {}
 func (*ReplaceNodeInNamespaceReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metad_22c00947c208e90e, []int{12}
+	return fileDescriptor_metad_6f03260f97e5f353, []int{12}
 }
 func (m *ReplaceNodeInNamespaceReq) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ReplaceNodeInNamespaceReq.Unmarshal(m, b)
@@ -706,7 +663,7 @@ func (m *ReplaceNodeInNamespaceRsp) Reset()         { *m = ReplaceNodeInNamespac
 func (m *ReplaceNodeInNamespaceRsp) String() string { return proto.CompactTextString(m) }
 func (*ReplaceNodeInNamespaceRsp) ProtoMessage()    {}
 func (*ReplaceNodeInNamespaceRsp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metad_22c00947c208e90e, []int{13}
+	return fileDescriptor_metad_6f03260f97e5f353, []int{13}
 }
 func (m *ReplaceNodeInNamespaceRsp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_ReplaceNodeInNamespaceRsp.Unmarshal(m, b)
@@ -737,7 +694,7 @@ func (m *AutoBalanceReq) Reset()         { *m = AutoBalanceReq{} }
 func (m *AutoBalanceReq) String() string { return proto.CompactTextString(m) }
 func (*AutoBalanceReq) ProtoMessage()    {}
 func (*AutoBalanceReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metad_22c00947c208e90e, []int{14}
+	return fileDescriptor_metad_6f03260f97e5f353, []int{14}
 }
 func (m *AutoBalanceReq) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AutoBalanceReq.Unmarshal(m, b)
@@ -774,7 +731,7 @@ func (m *AutoBalanceRsp) Reset()         { *m = AutoBalanceRsp{} }
 func (m *AutoBalanceRsp) String() string { return proto.CompactTextString(m) }
 func (*AutoBalanceRsp) ProtoMessage()    {}
 func (*AutoBalanceRsp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metad_22c00947c208e90e, []int{15}
+	return fileDescriptor_metad_6f03260f97e5f353, []int{15}
 }
 func (m *AutoBalanceRsp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_AutoBalanceRsp.Unmarshal(m, b)
@@ -809,7 +766,7 @@ func (m *MigrateShardReq) Reset()         { *m = MigrateShardReq{} }
 func (m *MigrateShardReq) String() string { return proto.CompactTextString(m) }
 func (*MigrateShardReq) ProtoMessage()    {}
 func (*MigrateShardReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metad_22c00947c208e90e, []int{16}
+	return fileDescriptor_metad_6f03260f97e5f353, []int{16}
 }
 func (m *MigrateShardReq) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_MigrateShardReq.Unmarshal(m, b)
@@ -874,7 +831,7 @@ func (m *MigrateShardRsp) Reset()         { *m = MigrateShardRsp{} }
 func (m *MigrateShardRsp) String() string { return proto.CompactTextString(m) }
 func (*MigrateShardRsp) ProtoMessage()    {}
 func (*MigrateShardRsp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metad_22c00947c208e90e, []int{17}
+	return fileDescriptor_metad_6f03260f97e5f353, []int{17}
 }
 func (m *MigrateShardRsp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_MigrateShardRsp.Unmarshal(m, b)
@@ -905,7 +862,7 @@ func (m *InfoReq) Reset()         { *m = InfoReq{} }
 func (m *InfoReq) String() string { return proto.CompactTextString(m) }
 func (*InfoReq) ProtoMessage()    {}
 func (*InfoReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metad_22c00947c208e90e, []int{18}
+	return fileDescriptor_metad_6f03260f97e5f353, []int{18}
 }
 func (m *InfoReq) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_InfoReq.Unmarshal(m, b)
@@ -942,7 +899,7 @@ func (m *InfoRsp) Reset()         { *m = InfoRsp{} }
 func (m *InfoRsp) String() string { return proto.CompactTextString(m) }
 func (*InfoRsp) ProtoMessage()    {}
 func (*InfoRsp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metad_22c00947c208e90e, []int{19}
+	return fileDescriptor_metad_6f03260f97e5f353, []int{19}
 }
 func (m *InfoRsp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_InfoRsp.Unmarshal(m, b)
@@ -973,7 +930,7 @@ func (m *CommitReq) Reset()         { *m = CommitReq{} }
 func (m *CommitReq) String() string { return proto.CompactTextString(m) }
 func (*CommitReq) ProtoMessage()    {}
 func (*CommitReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metad_22c00947c208e90e, []int{20}
+	return fileDescriptor_metad_6f03260f97e5f353, []int{20}
 }
 func (m *CommitReq) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CommitReq.Unmarshal(m, b)
@@ -1010,7 +967,7 @@ func (m *CommitRsp) Reset()         { *m = CommitRsp{} }
 func (m *CommitRsp) String() string { return proto.CompactTextString(m) }
 func (*CommitRsp) ProtoMessage()    {}
 func (*CommitRsp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_metad_22c00947c208e90e, []int{21}
+	return fileDescriptor_metad_6f03260f97e5f353, []int{21}
 }
 func (m *CommitRsp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_CommitRsp.Unmarshal(m, b)
@@ -1030,12 +987,126 @@ func (m *CommitRsp) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_CommitRsp proto.InternalMessageInfo
 
+type Metadata struct {
+	Namespace            string            `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	ShardNum             uint32            `protobuf:"varint,2,opt,name=shardNum,proto3" json:"shardNum,omitempty"`
+	ReplicaFactor        uint32            `protobuf:"varint,3,opt,name=replicaFactor,proto3" json:"replicaFactor,omitempty"`
+	Shards               []*Metadata_Shard `protobuf:"bytes,4,rep,name=shards,proto3" json:"shards,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
+	XXX_unrecognized     []byte            `json:"-"`
+	XXX_sizecache        int32             `json:"-"`
+}
+
+func (m *Metadata) Reset()         { *m = Metadata{} }
+func (m *Metadata) String() string { return proto.CompactTextString(m) }
+func (*Metadata) ProtoMessage()    {}
+func (*Metadata) Descriptor() ([]byte, []int) {
+	return fileDescriptor_metad_6f03260f97e5f353, []int{22}
+}
+func (m *Metadata) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_Metadata.Unmarshal(m, b)
+}
+func (m *Metadata) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_Metadata.Marshal(b, m, deterministic)
+}
+func (dst *Metadata) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Metadata.Merge(dst, src)
+}
+func (m *Metadata) XXX_Size() int {
+	return xxx_messageInfo_Metadata.Size(m)
+}
+func (m *Metadata) XXX_DiscardUnknown() {
+	xxx_messageInfo_Metadata.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Metadata proto.InternalMessageInfo
+
+func (m *Metadata) GetNamespace() string {
+	if m != nil {
+		return m.Namespace
+	}
+	return ""
+}
+
+func (m *Metadata) GetShardNum() uint32 {
+	if m != nil {
+		return m.ShardNum
+	}
+	return 0
+}
+
+func (m *Metadata) GetReplicaFactor() uint32 {
+	if m != nil {
+		return m.ReplicaFactor
+	}
+	return 0
+}
+
+func (m *Metadata) GetShards() []*Metadata_Shard {
+	if m != nil {
+		return m.Shards
+	}
+	return nil
+}
+
+type Metadata_Shard struct {
+	GroupID              uint32   `protobuf:"varint,1,opt,name=groupID,proto3" json:"groupID,omitempty"`
+	ReplicaID            uint32   `protobuf:"varint,2,opt,name=replicaID,proto3" json:"replicaID,omitempty"`
+	NodeAddr             string   `protobuf:"bytes,3,opt,name=nodeAddr,proto3" json:"nodeAddr,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *Metadata_Shard) Reset()         { *m = Metadata_Shard{} }
+func (m *Metadata_Shard) String() string { return proto.CompactTextString(m) }
+func (*Metadata_Shard) ProtoMessage()    {}
+func (*Metadata_Shard) Descriptor() ([]byte, []int) {
+	return fileDescriptor_metad_6f03260f97e5f353, []int{22, 0}
+}
+func (m *Metadata_Shard) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_Metadata_Shard.Unmarshal(m, b)
+}
+func (m *Metadata_Shard) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_Metadata_Shard.Marshal(b, m, deterministic)
+}
+func (dst *Metadata_Shard) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Metadata_Shard.Merge(dst, src)
+}
+func (m *Metadata_Shard) XXX_Size() int {
+	return xxx_messageInfo_Metadata_Shard.Size(m)
+}
+func (m *Metadata_Shard) XXX_DiscardUnknown() {
+	xxx_messageInfo_Metadata_Shard.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Metadata_Shard proto.InternalMessageInfo
+
+func (m *Metadata_Shard) GetGroupID() uint32 {
+	if m != nil {
+		return m.GroupID
+	}
+	return 0
+}
+
+func (m *Metadata_Shard) GetReplicaID() uint32 {
+	if m != nil {
+		return m.ReplicaID
+	}
+	return 0
+}
+
+func (m *Metadata_Shard) GetNodeAddr() string {
+	if m != nil {
+		return m.NodeAddr
+	}
+	return ""
+}
+
 func init() {
 	proto.RegisterType((*RegisterClientReq)(nil), "metadpb.RegisterClientReq")
 	proto.RegisterType((*RegisterClientRsp)(nil), "metadpb.RegisterClientRsp")
-	proto.RegisterType((*RegisterClientRsp_Shard)(nil), "metadpb.RegisterClientRsp.Shard")
 	proto.RegisterType((*RegisterNodeReq)(nil), "metadpb.RegisterNodeReq")
-	proto.RegisterType((*RegisterNodeReq_Shard)(nil), "metadpb.RegisterNodeReq.Shard")
 	proto.RegisterType((*RegisterNodeRsp)(nil), "metadpb.RegisterNodeRsp")
 	proto.RegisterType((*CreateNamespaceReq)(nil), "metadpb.CreateNamespaceReq")
 	proto.RegisterType((*CreateNamespaceRsp)(nil), "metadpb.CreateNamespaceRsp")
@@ -1055,6 +1126,10 @@ func init() {
 	proto.RegisterType((*InfoRsp)(nil), "metadpb.InfoRsp")
 	proto.RegisterType((*CommitReq)(nil), "metadpb.CommitReq")
 	proto.RegisterType((*CommitRsp)(nil), "metadpb.CommitRsp")
+	proto.RegisterType((*Metadata)(nil), "metadpb.Metadata")
+	proto.RegisterType((*Metadata_Shard)(nil), "metadpb.Metadata.Shard")
+	proto.RegisterEnum("metadpb.RegisterNodeReq_Type", RegisterNodeReq_Type_name, RegisterNodeReq_Type_value)
+	proto.RegisterEnum("metadpb.RegisterNodeRsp_Type", RegisterNodeRsp_Type_name, RegisterNodeRsp_Type_value)
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -1069,7 +1144,6 @@ type MetadGrpcClient interface {
 	DropNamespace(ctx context.Context, in *DropNamespaceReq, opts ...tropt.CallOption) (*DropNamespaceRsp, error)
 	AddNodeToNamespace(ctx context.Context, in *AddNodeToNamespaceReq, opts ...tropt.CallOption) (*AddNodeToNamespaceRsp, error)
 	RemoveNodeFromNamespace(ctx context.Context, in *RemoveNodeFromNamespaceReq, opts ...tropt.CallOption) (*RemoveNodeFromNamespaceRsp, error)
-	ReplaceNodeInNamespace(ctx context.Context, in *ReplaceNodeInNamespaceReq, opts ...tropt.CallOption) (*ReplaceNodeInNamespaceRsp, error)
 	AutoBalance(ctx context.Context, in *AutoBalanceReq, opts ...tropt.CallOption) (*AutoBalanceRsp, error)
 	MigrateShard(ctx context.Context, in *MigrateShardReq, opts ...tropt.CallOption) (*MigrateShardRsp, error)
 	Info(ctx context.Context, in *InfoReq, opts ...tropt.CallOption) (*InfoRsp, error)
@@ -1132,15 +1206,6 @@ func (c *metadGrpcClient) AddNodeToNamespace(ctx context.Context, in *AddNodeToN
 func (c *metadGrpcClient) RemoveNodeFromNamespace(ctx context.Context, in *RemoveNodeFromNamespaceReq, opts ...tropt.CallOption) (*RemoveNodeFromNamespaceRsp, error) {
 	out := new(RemoveNodeFromNamespaceRsp)
 	err := c.cc.Invoke(ctx, "/metadpb.Metad/RemoveNodeFromNamespace", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *metadGrpcClient) ReplaceNodeInNamespace(ctx context.Context, in *ReplaceNodeInNamespaceReq, opts ...tropt.CallOption) (*ReplaceNodeInNamespaceRsp, error) {
-	out := new(ReplaceNodeInNamespaceRsp)
-	err := c.cc.Invoke(ctx, "/metadpb.Metad/ReplaceNodeInNamespace", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1211,7 +1276,7 @@ type MetadClient interface {
 	DropNamespace(ctx context1.Context, in *DropNamespaceReq, opts ...grpc1.CallOption) (*DropNamespaceRsp, error)
 	AddNodeToNamespace(ctx context1.Context, in *AddNodeToNamespaceReq, opts ...grpc1.CallOption) (*AddNodeToNamespaceRsp, error)
 	RemoveNodeFromNamespace(ctx context1.Context, in *RemoveNodeFromNamespaceReq, opts ...grpc1.CallOption) (*RemoveNodeFromNamespaceRsp, error)
-	ReplaceNodeInNamespace(ctx context1.Context, in *ReplaceNodeInNamespaceReq, opts ...grpc1.CallOption) (*ReplaceNodeInNamespaceRsp, error)
+	// rpc ReplaceNodeInNamespace (ReplaceNodeInNamespaceReq) returns (ReplaceNodeInNamespaceRsp) {}
 	AutoBalance(ctx context1.Context, in *AutoBalanceReq, opts ...grpc1.CallOption) (*AutoBalanceRsp, error)
 	MigrateShard(ctx context1.Context, in *MigrateShardReq, opts ...grpc1.CallOption) (*MigrateShardRsp, error)
 	Info(ctx context1.Context, in *InfoReq, opts ...grpc1.CallOption) (*InfoRsp, error)
@@ -1324,15 +1389,6 @@ func (c *metadClient) RemoveNodeFromNamespace(ctx context1.Context, in *RemoveNo
 	return out, nil
 }
 
-func (c *metadClient) ReplaceNodeInNamespace(ctx context1.Context, in *ReplaceNodeInNamespaceReq, opts ...grpc1.CallOption) (*ReplaceNodeInNamespaceRsp, error) {
-	out := new(ReplaceNodeInNamespaceRsp)
-	err := c.cc.Invoke(ctx, "/metadpb.Metad/ReplaceNodeInNamespace", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *metadClient) AutoBalance(ctx context1.Context, in *AutoBalanceReq, opts ...grpc1.CallOption) (*AutoBalanceRsp, error) {
 	out := new(AutoBalanceRsp)
 	err := c.cc.Invoke(ctx, "/metadpb.Metad/AutoBalance", in, out, opts...)
@@ -1377,7 +1433,7 @@ type MetadServer interface {
 	DropNamespace(context1.Context, *DropNamespaceReq) (*DropNamespaceRsp, error)
 	AddNodeToNamespace(context1.Context, *AddNodeToNamespaceReq) (*AddNodeToNamespaceRsp, error)
 	RemoveNodeFromNamespace(context1.Context, *RemoveNodeFromNamespaceReq) (*RemoveNodeFromNamespaceRsp, error)
-	ReplaceNodeInNamespace(context1.Context, *ReplaceNodeInNamespaceReq) (*ReplaceNodeInNamespaceRsp, error)
+	// rpc ReplaceNodeInNamespace (ReplaceNodeInNamespaceReq) returns (ReplaceNodeInNamespaceRsp) {}
 	AutoBalance(context1.Context, *AutoBalanceReq) (*AutoBalanceRsp, error)
 	MigrateShard(context1.Context, *MigrateShardReq) (*MigrateShardRsp, error)
 	Info(context1.Context, *InfoReq) (*InfoRsp, error)
@@ -1512,24 +1568,6 @@ func _Metad_RemoveNodeFromNamespace_Handler(srv interface{}, ctx context1.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Metad_ReplaceNodeInNamespace_Handler(srv interface{}, ctx context1.Context, dec func(interface{}) error, interceptor grpc1.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ReplaceNodeInNamespaceReq)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(MetadServer).ReplaceNodeInNamespace(ctx, in)
-	}
-	info := &grpc1.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/metadpb.Metad/ReplaceNodeInNamespace",
-	}
-	handler := func(ctx context1.Context, req interface{}) (interface{}, error) {
-		return srv.(MetadServer).ReplaceNodeInNamespace(ctx, req.(*ReplaceNodeInNamespaceReq))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _Metad_AutoBalance_Handler(srv interface{}, ctx context1.Context, dec func(interface{}) error, interceptor grpc1.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AutoBalanceReq)
 	if err := dec(in); err != nil {
@@ -1623,10 +1661,6 @@ var _Metad_serviceDesc = grpc1.ServiceDesc{
 			Handler:    _Metad_RemoveNodeFromNamespace_Handler,
 		},
 		{
-			MethodName: "ReplaceNodeInNamespace",
-			Handler:    _Metad_ReplaceNodeInNamespace_Handler,
-		},
-		{
 			MethodName: "AutoBalance",
 			Handler:    _Metad_AutoBalance_Handler,
 		},
@@ -1660,53 +1694,58 @@ var _Metad_serviceDesc = grpc1.ServiceDesc{
 	Metadata: "metad.proto",
 }
 
-func init() { proto.RegisterFile("metad.proto", fileDescriptor_metad_22c00947c208e90e) }
+func init() { proto.RegisterFile("metad.proto", fileDescriptor_metad_6f03260f97e5f353) }
 
-var fileDescriptor_metad_22c00947c208e90e = []byte{
-	// 713 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x56, 0x4d, 0x6f, 0xd3, 0x4c,
-	0x10, 0x7e, 0x9d, 0xcf, 0x37, 0x93, 0xa6, 0x1f, 0x23, 0x68, 0xdd, 0x6d, 0x85, 0xa2, 0x05, 0x89,
-	0x20, 0xa1, 0xa8, 0x04, 0x0e, 0x5c, 0x43, 0xa3, 0x42, 0x0e, 0xcd, 0xc1, 0x45, 0x5c, 0x38, 0xb9,
-	0xf1, 0x36, 0x58, 0x8a, 0xbd, 0x5b, 0xaf, 0x03, 0xff, 0x81, 0x1b, 0x67, 0x7e, 0x10, 0x37, 0x7e,
-	0x13, 0xda, 0x8d, 0xed, 0xf8, 0x23, 0x4e, 0x52, 0xf5, 0xe6, 0xf9, 0xd8, 0x99, 0x79, 0x66, 0xf7,
-	0x79, 0x64, 0x68, 0x7b, 0x2c, 0xb4, 0x9d, 0xbe, 0x08, 0x78, 0xc8, 0xb1, 0xa9, 0x0d, 0x71, 0x4b,
-	0xdf, 0xc0, 0x91, 0xc5, 0x66, 0xae, 0x0c, 0x59, 0x70, 0x39, 0x77, 0x99, 0x1f, 0x5a, 0xec, 0x1e,
-	0xcf, 0xa1, 0xe5, 0xdb, 0x1e, 0x93, 0xc2, 0x9e, 0x32, 0xd3, 0xe8, 0x1a, 0xbd, 0x96, 0xb5, 0x72,
-	0xd0, 0x9f, 0x95, 0xc2, 0x19, 0x29, 0x36, 0x9f, 0x41, 0x02, 0xff, 0xcb, 0x6f, 0x76, 0xe0, 0x4c,
-	0x16, 0x9e, 0x59, 0xe9, 0x1a, 0xbd, 0x8e, 0x95, 0xd8, 0xf8, 0x02, 0x3a, 0x01, 0x13, 0x73, 0x77,
-	0x6a, 0x5f, 0xd9, 0xd3, 0x90, 0x07, 0x66, 0x55, 0x27, 0x64, 0x9d, 0xf8, 0x1e, 0x1a, 0xfa, 0x84,
-	0x34, 0x6b, 0xdd, 0x6a, 0xaf, 0x3d, 0xe8, 0xf6, 0x23, 0x08, 0xfd, 0xc2, 0x2c, 0xfd, 0x1b, 0x95,
-	0x68, 0x45, 0xf9, 0xe4, 0x2b, 0xd4, 0xb5, 0x03, 0x4d, 0x68, 0xce, 0x02, 0xbe, 0x10, 0xe3, 0x91,
-	0x1e, 0xb0, 0x63, 0xc5, 0xa6, 0x1a, 0x3e, 0xea, 0x36, 0x1e, 0x45, 0xf3, 0xad, 0x1c, 0x6a, 0x78,
-	0x9f, 0x3b, 0x6c, 0xe8, 0x38, 0xcb, 0xd9, 0x5a, 0x56, 0x62, 0xd3, 0xbf, 0x06, 0x1c, 0xc4, 0x03,
-	0x4c, 0xb8, 0xc3, 0xd4, 0xfa, 0x10, 0x6a, 0xb6, 0xca, 0x5d, 0x6e, 0x41, 0x7f, 0xab, 0x0e, 0xb6,
-	0xe3, 0xb9, 0xbe, 0x2e, 0x52, 0x59, 0xae, 0x27, 0x71, 0xe0, 0x3b, 0xa8, 0xeb, 0x61, 0x75, 0xf9,
-	0xf6, 0xe0, 0x59, 0x01, 0x5b, 0x54, 0x3a, 0x42, 0xb6, 0x4c, 0x26, 0x37, 0x31, 0xb0, 0xcd, 0xbb,
-	0xdf, 0x87, 0x8a, 0xeb, 0x44, 0xa8, 0x2a, 0xae, 0x93, 0x05, 0x5b, 0xcd, 0x81, 0xa5, 0x47, 0x39,
-	0x3c, 0x52, 0xd0, 0x10, 0xf0, 0x32, 0x60, 0x76, 0xc8, 0x26, 0x71, 0xcd, 0xad, 0x8f, 0xe4, 0xf1,
-	0x17, 0x4e, 0x9f, 0x14, 0xbb, 0x4a, 0x41, 0x2f, 0xe0, 0x70, 0x14, 0x70, 0xb1, 0xfb, 0x24, 0x14,
-	0xf3, 0x27, 0xa4, 0xa0, 0x33, 0x78, 0x3a, 0x74, 0x1c, 0x85, 0xef, 0x33, 0x7f, 0x00, 0xa8, 0xf8,
-	0x62, 0x2b, 0x65, 0x17, 0x5b, 0xcd, 0x5d, 0x2c, 0x3d, 0x59, 0xdb, 0x48, 0x0a, 0x3a, 0x01, 0x62,
-	0x31, 0x8f, 0x7f, 0x67, 0x2a, 0x76, 0x15, 0x70, 0xef, 0x71, 0x63, 0xd0, 0xf3, 0xf2, 0x7a, 0x52,
-	0xd0, 0x5f, 0x06, 0x9c, 0x5a, 0x4c, 0xcc, 0xed, 0xa9, 0x8e, 0x8f, 0xfd, 0x07, 0x74, 0x33, 0xa1,
-	0xc9, 0xe7, 0x4e, 0xea, 0xdd, 0xc6, 0xa6, 0x8a, 0xf8, 0xec, 0x47, 0x0a, 0x78, 0x6c, 0x22, 0x85,
-	0x3d, 0xfd, 0x19, 0xef, 0xa5, 0xa6, 0xc3, 0x19, 0x1f, 0x3d, 0x2b, 0x1d, 0x49, 0x0a, 0xda, 0x87,
-	0xfd, 0xe1, 0x22, 0xe4, 0x1f, 0xec, 0xb9, 0xed, 0xef, 0x72, 0xc9, 0x87, 0xd9, 0x7c, 0x29, 0xe8,
-	0x6f, 0x03, 0x0e, 0xae, 0xdd, 0x59, 0x60, 0x87, 0x6c, 0x49, 0x9a, 0x5d, 0x80, 0xea, 0x27, 0x9a,
-	0x48, 0x40, 0x6c, 0x6e, 0x66, 0x8c, 0x7a, 0xea, 0x77, 0x6a, 0xe1, 0xdc, 0x61, 0x11, 0xd0, 0xc4,
-	0xc6, 0x63, 0x68, 0x84, 0x5c, 0x47, 0xea, 0x3a, 0x12, 0x59, 0x8a, 0x65, 0x99, 0xe1, 0xa4, 0xa0,
-	0x2f, 0xa1, 0x39, 0xf6, 0xef, 0xf8, 0x76, 0xac, 0xad, 0x28, 0x51, 0x0a, 0xfa, 0x0a, 0x5a, 0x97,
-	0xdc, 0xf3, 0xdc, 0x1d, 0x54, 0xbb, 0x9d, 0xa4, 0x4a, 0x31, 0xf8, 0xd3, 0x80, 0xfa, 0xb5, 0x92,
-	0x18, 0x9c, 0xc0, 0x7e, 0x56, 0x3f, 0x91, 0x94, 0x09, 0x2b, 0xbb, 0x27, 0xa4, 0x5c, 0x74, 0xe9,
-	0x7f, 0x3d, 0xe3, 0xc2, 0xc0, 0x4f, 0xb0, 0x97, 0x96, 0x0f, 0x34, 0xcb, 0xa4, 0x8c, 0x94, 0x44,
-	0x92, 0x4a, 0xd7, 0x70, 0x90, 0xe3, 0x3f, 0x9e, 0x25, 0x47, 0x8a, 0x7a, 0x44, 0xca, 0x83, 0xaa,
-	0x24, 0x7e, 0x84, 0x4e, 0x46, 0x06, 0xf0, 0x34, 0xc9, 0xcf, 0x0b, 0x0a, 0x29, 0x0b, 0xe9, 0x42,
-	0x5f, 0x00, 0x8b, 0x94, 0xc6, 0x95, 0x64, 0xaf, 0x15, 0x16, 0xb2, 0x31, 0xae, 0xeb, 0x32, 0x38,
-	0x29, 0x61, 0x30, 0x3e, 0x4f, 0xad, 0xaa, 0x4c, 0x33, 0xc8, 0xf6, 0x24, 0xdd, 0xe6, 0x16, 0x8e,
-	0xd7, 0xd3, 0x0e, 0x69, 0xaa, 0x40, 0x89, 0x54, 0x90, 0xad, 0x39, 0xba, 0xc7, 0x10, 0xda, 0x29,
-	0x36, 0xe2, 0xc9, 0x0a, 0x7b, 0x86, 0xd3, 0x64, 0x7d, 0x40, 0x97, 0x18, 0xc1, 0x5e, 0x9a, 0x20,
-	0xa9, 0x77, 0x94, 0x23, 0x35, 0x29, 0x89, 0xe8, 0x2a, 0xaf, 0xa1, 0xa6, 0xa8, 0x82, 0x87, 0x49,
-	0x4e, 0x44, 0x31, 0x92, 0xf3, 0xe8, 0xec, 0x01, 0x34, 0x96, 0x14, 0x41, 0x5c, 0xbd, 0xa5, 0x98,
-	0x5e, 0xa4, 0xe0, 0x53, 0x67, 0x6e, 0x1b, 0xfa, 0x7f, 0xea, 0xed, 0xbf, 0x00, 0x00, 0x00, 0xff,
-	0xff, 0x0c, 0xd2, 0x39, 0x83, 0x5e, 0x09, 0x00, 0x00,
+var fileDescriptor_metad_6f03260f97e5f353 = []byte{
+	// 788 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x56, 0x4d, 0x6f, 0xd3, 0x4c,
+	0x10, 0xae, 0xd3, 0x7c, 0x34, 0x93, 0xba, 0x49, 0xe6, 0x7d, 0xa1, 0xae, 0x5b, 0x50, 0xb5, 0x20,
+	0x35, 0x48, 0x28, 0xb4, 0xe1, 0x0a, 0x87, 0xd0, 0xa8, 0x34, 0x87, 0xe6, 0x60, 0x0a, 0x17, 0x4e,
+	0x9b, 0x78, 0x1b, 0x22, 0xc5, 0xde, 0xc5, 0xeb, 0x82, 0xfa, 0x03, 0x90, 0xb8, 0x72, 0xe6, 0xe7,
+	0xf1, 0x27, 0x38, 0x22, 0xaf, 0x3f, 0x62, 0x3b, 0x71, 0x9b, 0x0a, 0x71, 0x8a, 0x67, 0x9e, 0xf9,
+	0xda, 0xd9, 0x99, 0x67, 0x03, 0x0d, 0x87, 0xf9, 0xd4, 0xee, 0x0a, 0x8f, 0xfb, 0x1c, 0x6b, 0x4a,
+	0x10, 0x63, 0x72, 0x02, 0x6d, 0x8b, 0x4d, 0x67, 0xd2, 0x67, 0xde, 0xe9, 0x7c, 0xc6, 0x5c, 0xdf,
+	0x62, 0x9f, 0xf1, 0x00, 0xea, 0x2e, 0x75, 0x98, 0x14, 0x74, 0xc2, 0x0c, 0xed, 0x50, 0xeb, 0xd4,
+	0xad, 0x85, 0x82, 0xbc, 0x5a, 0x72, 0x91, 0x02, 0x8f, 0xa0, 0xe2, 0xd3, 0xf1, 0x3c, 0x34, 0x6f,
+	0xf4, 0xda, 0xdd, 0x28, 0x41, 0xf7, 0x22, 0xf8, 0xa5, 0x3e, 0xb5, 0x42, 0x9c, 0x7c, 0x2b, 0x41,
+	0x33, 0x76, 0x1f, 0x71, 0x9b, 0x05, 0xf9, 0x4e, 0xa0, 0xec, 0xdf, 0x88, 0xd0, 0x77, 0xa7, 0xf7,
+	0x28, 0xf1, 0xcd, 0xd9, 0x75, 0x2f, 0x6f, 0x04, 0xb3, 0x94, 0x29, 0x22, 0x94, 0xa9, 0x6d, 0x7b,
+	0x46, 0x49, 0x55, 0xa7, 0xbe, 0xb3, 0x65, 0x6f, 0xe6, 0xca, 0x46, 0x03, 0x6a, 0x53, 0x8f, 0x5f,
+	0x8b, 0xe1, 0xc0, 0x28, 0x1f, 0x6a, 0x1d, 0xdd, 0x8a, 0xc5, 0xc0, 0xcf, 0x63, 0x62, 0x3e, 0x9b,
+	0xd0, 0xe1, 0xc0, 0xa8, 0x28, 0x6c, 0xa1, 0xc0, 0x87, 0x50, 0xf5, 0xb9, 0xcd, 0x87, 0x03, 0xa3,
+	0xaa, 0xa0, 0x48, 0x22, 0xaf, 0xa1, 0x1c, 0xd4, 0x83, 0x6d, 0xd0, 0xe3, 0x3a, 0xdf, 0x7d, 0xa2,
+	0x9e, 0xdd, 0xda, 0xc0, 0xff, 0xa0, 0xf9, 0xde, 0xf5, 0x32, 0x4a, 0x0d, 0x75, 0xa8, 0x9f, 0x33,
+	0xea, 0xf9, 0x63, 0x46, 0xfd, 0x56, 0x89, 0x7c, 0xd7, 0x72, 0x7d, 0x90, 0x62, 0xbd, 0x3e, 0x48,
+	0x91, 0xee, 0x83, 0x01, 0x35, 0x19, 0x24, 0x18, 0x0e, 0xa2, 0x56, 0xc4, 0x22, 0xe9, 0x44, 0xf5,
+	0x35, 0xa1, 0x71, 0xea, 0x31, 0xea, 0xb3, 0xb8, 0xba, 0x26, 0x34, 0x2c, 0xe6, 0xf0, 0x2f, 0x91,
+	0x42, 0x23, 0x3e, 0x60, 0x68, 0x31, 0x8a, 0x9b, 0x75, 0xe7, 0x10, 0xa0, 0x09, 0x5b, 0x2a, 0xd1,
+	0xe8, 0xda, 0x51, 0x89, 0x75, 0x2b, 0x91, 0xf1, 0x29, 0xe8, 0x51, 0xfb, 0xce, 0xe8, 0xc4, 0xe7,
+	0x9e, 0xba, 0x0b, 0xdd, 0xca, 0x2a, 0xc9, 0xff, 0xcb, 0x59, 0xa5, 0x20, 0xc7, 0xd0, 0x1a, 0x78,
+	0x5c, 0xac, 0x5f, 0x09, 0xc1, 0xbc, 0x87, 0x14, 0x64, 0x0a, 0x0f, 0xfa, 0xb6, 0x1d, 0xb4, 0xeb,
+	0x92, 0xdf, 0xe3, 0x50, 0x05, 0x43, 0x45, 0x6d, 0x67, 0xe6, 0xf6, 0x03, 0x20, 0x1a, 0xaa, 0x44,
+	0x41, 0x76, 0x57, 0x26, 0x92, 0x82, 0x8c, 0xc0, 0x0c, 0x9b, 0x1c, 0x60, 0x67, 0x1e, 0x77, 0xfe,
+	0xae, 0x0c, 0x72, 0x50, 0x1c, 0x4f, 0x0a, 0xf2, 0x43, 0x83, 0x3d, 0x8b, 0x89, 0x39, 0x9d, 0x28,
+	0x7c, 0xe8, 0xde, 0x23, 0x9b, 0x01, 0x35, 0x3e, 0xb7, 0xfb, 0x8b, 0x84, 0xb1, 0x18, 0x20, 0x2e,
+	0xfb, 0x9a, 0x3a, 0x78, 0x2c, 0x22, 0x81, 0x6d, 0xf5, 0x19, 0xf7, 0xa5, 0xac, 0xe0, 0x8c, 0x8e,
+	0xec, 0x17, 0x96, 0x24, 0x05, 0xe9, 0xc2, 0x4e, 0xff, 0xda, 0xe7, 0x6f, 0xe8, 0x9c, 0xba, 0xeb,
+	0x5c, 0x72, 0x2b, 0x6b, 0x2f, 0x05, 0xf9, 0xa9, 0x41, 0xf3, 0x62, 0x36, 0xf5, 0xe2, 0xc1, 0x5e,
+	0xeb, 0xa0, 0xe9, 0x55, 0xd1, 0x93, 0x55, 0xc9, 0x12, 0xc0, 0x66, 0x9e, 0x00, 0x4c, 0xd8, 0xba,
+	0x0a, 0x1a, 0xce, 0x6d, 0x16, 0x1d, 0x34, 0x91, 0x43, 0x72, 0x50, 0x48, 0x45, 0x21, 0x91, 0x44,
+	0xda, 0xb9, 0xe2, 0xa4, 0x20, 0x47, 0x50, 0x1b, 0xba, 0x57, 0xfc, 0xee, 0xb3, 0xd6, 0x23, 0x43,
+	0x29, 0xc8, 0x33, 0xa8, 0x9f, 0x72, 0xc7, 0x99, 0xad, 0xc1, 0xca, 0x8d, 0xc4, 0x54, 0x0a, 0xf2,
+	0x5b, 0x83, 0xad, 0x98, 0x78, 0xff, 0xf5, 0x22, 0xe3, 0x0b, 0xa8, 0x2a, 0x0f, 0x69, 0x94, 0x0f,
+	0x37, 0x3b, 0x8d, 0xde, 0xee, 0x12, 0xf7, 0x77, 0xc3, 0x26, 0x44, 0x66, 0xe6, 0x47, 0xa8, 0x28,
+	0x45, 0x9a, 0x92, 0xb5, 0x5b, 0x28, 0xb9, 0xb4, 0xe2, 0x46, 0x5c, 0x6e, 0xb3, 0xd4, 0x64, 0x26,
+	0x72, 0xef, 0x57, 0x05, 0x2a, 0x2a, 0x2f, 0x8e, 0x60, 0x27, 0xfb, 0x4e, 0xa1, 0xb9, 0xc4, 0xa8,
+	0xc9, 0x9b, 0x67, 0x16, 0x62, 0x52, 0x90, 0x8d, 0x8e, 0x76, 0xac, 0xe1, 0x39, 0x6c, 0xa7, 0x89,
+	0x18, 0x8d, 0xa2, 0x77, 0xca, 0x34, 0x8a, 0x98, 0x3b, 0x8a, 0x74, 0x01, 0xcd, 0x1c, 0xf5, 0xe1,
+	0x7e, 0xe2, 0xb2, 0x4c, 0xc5, 0x66, 0x31, 0x18, 0x84, 0xc4, 0xb7, 0xa0, 0x67, 0x18, 0x10, 0xf7,
+	0x12, 0xfb, 0x3c, 0x97, 0x9a, 0x45, 0x90, 0x0a, 0xf4, 0x01, 0x70, 0x99, 0xcd, 0xf0, 0x71, 0xe2,
+	0xb2, 0x92, 0x53, 0xcd, 0x5b, 0x71, 0x15, 0x97, 0xc1, 0x6e, 0x01, 0x79, 0xe1, 0x93, 0x54, 0xab,
+	0x8a, 0xe8, 0xd2, 0xbc, 0xdb, 0x48, 0xa5, 0xe9, 0x43, 0x23, 0x45, 0x12, 0xb8, 0x98, 0xc3, 0x2c,
+	0xd5, 0x98, 0xab, 0x01, 0x15, 0x62, 0x00, 0xdb, 0xe9, 0xbd, 0x4d, 0xdd, 0x71, 0x8e, 0x6b, 0xcc,
+	0x02, 0x44, 0x45, 0x79, 0x0e, 0xe5, 0x60, 0x83, 0xb1, 0x95, 0xd8, 0x44, 0x9b, 0x6f, 0xe6, 0x34,
+	0xca, 0xba, 0x07, 0xd5, 0x70, 0x73, 0x11, 0x17, 0xf7, 0x1c, 0x6f, 0xbd, 0xb9, 0xa4, 0x0b, 0x7c,
+	0xc6, 0x55, 0xf5, 0x37, 0xee, 0xe5, 0x9f, 0x00, 0x00, 0x00, 0xff, 0xff, 0xb1, 0x70, 0x14, 0xc7,
+	0xd5, 0x09, 0x00, 0x00,
 }

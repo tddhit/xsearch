@@ -4,29 +4,10 @@ package searchdpb;
 
 import "xsearch/pb/xsearch.proto";
 
-service SearchdAdmin {
-    rpc CreateShard (CreateShardReq) returns (CreateShardRsp) {}
-    rpc RemoveShard (RemoveShardReq) returns (RemoveShardRsp) {}
-}
-
 service Searchd {
     rpc IndexDoc (IndexDocReq) returns (IndexDocRsp) {}
     rpc RemoveDoc (RemoveDocReq) returns (RemoveDocRsp) {}
     rpc Search (SearchReq) returns (SearchRsp) {}
-}
-
-message CreateShardReq {
-    string shardID = 1;
-}
-
-message CreateShardRsp {
-}
-
-message RemoveShardReq {
-    string shardID = 1;
-}
-
-message RemoveShardRsp {
 }
 
 message IndexDocReq {
@@ -57,7 +38,7 @@ message SearchRsp {
 }
 
 message Command {
-    enum Type{
+    enum Type {
         INDEX = 0; 
         REMOVE = 1;
     } 

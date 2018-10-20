@@ -1,4 +1,4 @@
-package service
+package metad
 
 import (
 	"sync"
@@ -20,8 +20,8 @@ func newClient(addr, namespace string) *client {
 	return &client{
 		addr:      addr,
 		namespace: namespace,
-		readC:     make(chan *metadpb.RegisterClientReq, 10),
-		writeC:    make(chan *metadpb.RegisterClientRsp, 10),
+		readC:     make(chan *metadpb.RegisterClientReq, 100),
+		writeC:    make(chan *metadpb.RegisterClientRsp, 100),
 	}
 }
 
@@ -31,7 +31,7 @@ func (c *client) readLoop() {
 		select {
 		case req := <-c.readC:
 			if req == nil {
-				return
+				goto exit
 			}
 			timer.Reset(3 * time.Second)
 		case <-timer.C:
@@ -41,14 +41,13 @@ func (c *client) readLoop() {
 exit:
 	timer.Stop()
 	c.close()
-	c.readC = nil
 }
 
 func (c *client) writeLoop(stream metadpb.Metad_RegisterClientServer) {
 	for {
 		rsp := <-c.writeC
 		if rsp == nil {
-			return
+			goto exit
 		}
 		if err := stream.Send(rsp); err != nil {
 			log.Error(err)
@@ -56,7 +55,6 @@ func (c *client) writeLoop(stream metadpb.Metad_RegisterClientServer) {
 		}
 	}
 exit:
-	c.writeC = nil
 }
 
 func (c *client) ioLoop(stream metadpb.Metad_RegisterClientServer) {
@@ -74,10 +72,12 @@ func (c *client) ioLoop(stream metadpb.Metad_RegisterClientServer) {
 }
 
 func (c *client) close() {
-	if c.writeC != nil {
-		close(c.writeC)
-	}
 	if c.readC != nil {
 		close(c.readC)
+		c.readC = nil
+	}
+	if c.writeC != nil {
+		close(c.writeC)
+		c.writeC = nil
 	}
 }
