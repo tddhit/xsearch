@@ -3,11 +3,11 @@ package searchd
 import (
 	"context"
 
-	"github.com/tddhit/box/interceptor"
-	"github.com/tddhit/box/transport/common"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/tddhit/box/interceptor"
+	"github.com/tddhit/box/transport/common"
 	"github.com/tddhit/xsearch/searchd/pb"
 )
 
@@ -26,11 +26,11 @@ func CheckParams(s *service) interceptor.UnaryServerMiddleware {
 
 			var shardID string
 			switch info.FullMethod {
-			case "/searchd.Searchd/IndexDoc":
+			case "/searchdpb.Searchd/IndexDoc":
 				shardID = req.(*searchdpb.IndexDocReq).ShardID
-			case "/searchd.Searchd/RemoveDoc":
+			case "/searchdpb.Searchd/RemoveDoc":
 				shardID = req.(*searchdpb.RemoveDocReq).ShardID
-			case "/searchd.Searchd/Search":
+			case "/searchdpb.Searchd/Search":
 				shardID = req.(*searchdpb.SearchReq).ShardID
 			}
 			if shardID == "" {

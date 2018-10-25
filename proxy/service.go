@@ -1,4 +1,4 @@
-package service
+package proxy
 
 import (
 	"container/heap"
@@ -10,15 +10,17 @@ import (
 	"time"
 
 	uuid "github.com/satori/go.uuid"
-	"github.com/tddhit/box/transport"
-	"github.com/tddhit/tools/log"
+	"github.com/urfave/cli"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	metadpb "github.com/tddhit/xsearch/metad/pb"
-	xsearchpb "github.com/tddhit/xsearch/pb"
-	proxypb "github.com/tddhit/xsearch/proxy/pb"
-	searchdpb "github.com/tddhit/xsearch/searchd/pb"
+	"github.com/tddhit/box/mw"
+	"github.com/tddhit/box/transport"
+	"github.com/tddhit/tools/log"
+	"github.com/tddhit/xsearch/metad/pb"
+	"github.com/tddhit/xsearch/pb"
+	"github.com/tddhit/xsearch/proxy/pb"
+	"github.com/tddhit/xsearch/searchd/pb"
 )
 
 type service struct {
@@ -27,11 +29,15 @@ type service struct {
 	exitC    chan struct{}
 }
 
-func NewService(metadAddr, namespaces string) (*service, error) {
+func NewService(ctx *cli.Context) *service {
+	if !mw.IsWorker() {
+		return nil
+	}
+	metadAddr := ctx.String("metad")
+	namespaces := ctx.String("namespaces")
 	conn, err := transport.Dial(metadAddr)
 	if err != nil {
-		log.Error(err)
-		return nil, err
+		log.Fatal(err)
 	}
 	s := &service{
 		metad:    metadpb.NewMetadGrpcClient(conn),
@@ -41,10 +47,10 @@ func NewService(metadAddr, namespaces string) (*service, error) {
 	nss := strings.Split(namespaces, ",")
 	for _, ns := range nss {
 		if err := s.registerClient(ns); err != nil {
-			return nil, err
+			log.Fatal(err)
 		}
 	}
-	return s, nil
+	return s
 }
 
 func (s *service) registerClient(namespace string) error {
@@ -69,11 +75,11 @@ func (s *service) watchShardTable(stream metadpb.Metad_RegisterClientClient) {
 		}
 		log.Debug(rsp)
 		table := s.resource.updateTable(
-			rsp.Namespace,
-			int(rsp.ShardNum),
-			int(rsp.ReplicaFactor),
+			rsp.Table.Namespace,
+			int(rsp.Table.ShardNum),
+			int(rsp.Table.ReplicaFactor),
 		)
-		for _, ss := range rsp.Shards {
+		for _, ss := range rsp.Table.Shards {
 			n, err := s.resource.getOrCreateNode(ss.NodeAddr)
 			if err != nil {
 				log.Error(err)
@@ -82,7 +88,7 @@ func (s *service) watchShardTable(stream metadpb.Metad_RegisterClientClient) {
 			table.setShard(
 				&shard{
 					id: fmt.Sprintf("%s.%d.%d",
-						table.namespace, ss.GroupID, ss.ReplicaID),
+						rsp.Table.Namespace, ss.GroupID, ss.ReplicaID),
 					groupID:   int(ss.GroupID),
 					replicaID: int(ss.ReplicaID),
 					node:      n,

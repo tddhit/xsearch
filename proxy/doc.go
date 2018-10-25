@@ -1,6 +1,6 @@
-package service
+package proxy
 
-import xsearchpb "github.com/tddhit/xsearch/pb"
+import "github.com/tddhit/xsearch/pb"
 
 type DocHeap []*xsearchpb.Document
 

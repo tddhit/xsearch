@@ -4,7 +4,7 @@ import (
 	"errors"
 	"sync"
 
-	diskqueuepb "github.com/tddhit/diskqueue/pb"
+	"github.com/tddhit/diskqueue/pb"
 )
 
 var (
@@ -35,6 +35,7 @@ func (r *resource) getShard(id string) (*shard, bool) {
 
 func (r *resource) createShard(
 	id string,
+	channel string,
 	c diskqueuepb.DiskqueueGrpcClient) (*shard, error) {
 
 	r.Lock()
@@ -43,7 +44,7 @@ func (r *resource) createShard(
 	if s, ok := r.shards[id]; ok {
 		return s, errAlreadyExists
 	}
-	s := newShard(id, r.dir, c)
+	s := newShard(id, r.dir, channel, c)
 	r.shards[id] = s
 	return s, nil
 }

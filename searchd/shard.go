@@ -5,42 +5,43 @@ import (
 	"sync"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/lunny/log"
-	diskqueuepb "github.com/tddhit/diskqueue/pb"
 
+	"github.com/tddhit/diskqueue/pb"
+	"github.com/tddhit/tools/log"
 	"github.com/tddhit/xsearch/indexer"
 	indexerOpt "github.com/tddhit/xsearch/indexer/option"
-	searchdpb "github.com/tddhit/xsearch/searchd/pb"
+	"github.com/tddhit/xsearch/searchd/pb"
 )
 
 type shard struct {
-	id       string
-	indexer  *indexer.Indexer
-	dqClient diskqueuepb.DiskqueueGrpcClient
-	ctx      context.Context
-	cancel   context.CancelFunc
-	wg       sync.WaitGroup
+	id      string
+	indexer *indexer.Indexer
+	diskq   diskqueuepb.DiskqueueGrpcClient
+	ctx     context.Context
+	cancel  context.CancelFunc
+	wg      sync.WaitGroup
 }
 
-func newShard(id, dir string, c diskqueuepb.DiskqueueGrpcClient) *shard {
+func newShard(id, dir, channel string, c diskqueuepb.DiskqueueGrpcClient) *shard {
 	s := &shard{
-		id:       id,
-		indexer:  indexer.New(indexerOpt.WithIndexDir(dir)),
-		dqClient: c,
+		id:      id,
+		indexer: indexer.New(indexerOpt.WithIndexDir(dir)),
+		diskq:   c,
 	}
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.wg.Add(1)
 	go func() {
-		s.indexLoop()
+		s.indexLoop(channel)
 		s.wg.Done()
 	}()
 	return s
 }
 
-func (s *shard) indexLoop() {
+func (s *shard) indexLoop(channel string) {
 	for {
-		rsp, err := s.dqClient.Pop(s.ctx, &diskqueuepb.PopRequest{
-			Topic: s.id,
+		rsp, err := s.diskq.Pop(s.ctx, &diskqueuepb.PopReq{
+			Topic:   s.id,
+			Channel: channel,
 		})
 		if err != nil {
 			log.Error(err)

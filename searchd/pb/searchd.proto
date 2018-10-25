@@ -43,7 +43,7 @@ message Command {
         REMOVE = 1;
     } 
     Type type = 1; 
-    oneof doc_oneof{ 
+    oneof doc_oneof {
         xsearchpb.Document doc = 3;
         string docID = 4;
     }

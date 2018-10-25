@@ -1,6 +1,8 @@
 package metad
 
 import (
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -42,13 +44,24 @@ func (n *node) readLoop(r *resource) {
 				goto exit
 			}
 			timer.Reset(3 * time.Second)
+			v := strings.Split(req.ShardID, ".")
+			if len(v) != 3 {
+				continue
+			}
+			namespace := v[0]
+			groupID, err := strconv.Atoi(v[1])
+			if err != nil {
+				log.Error(err)
+				continue
+			}
+			replicaID, err := strconv.Atoi(v[2])
+			if err != nil {
+				log.Error(err)
+				continue
+			}
 			switch req.Type {
 			case metadpb.RegisterNodeReq_RegisterShard:
-				shard, err := r.getShard(
-					req.Namespace,
-					int(req.GroupID),
-					int(req.ReplicaID),
-				)
+				shard, err := r.getShard(namespace, groupID, replicaID)
 				if err != nil {
 					break
 				}
@@ -58,11 +71,10 @@ func (n *node) readLoop(r *resource) {
 				}
 				shard.execTodo()
 			case metadpb.RegisterNodeReq_UnregisterShard:
-				shard, err := r.getShard(
-					req.Namespace,
-					int(req.GroupID),
-					int(req.ReplicaID),
-				)
+				shard, err := r.getShard(namespace, groupID, replicaID)
+				if err != nil {
+					break
+				}
 				if err != nil {
 					break
 				}

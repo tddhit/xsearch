@@ -1,4 +1,4 @@
-package service
+package proxy
 
 import (
 	"sync"
@@ -7,13 +7,13 @@ import (
 type resource struct {
 	sync.RWMutex
 	nodes  map[string]*node
-	online map[string]*shardTable
+	tables map[string]*shardTable
 }
 
 func newResource() *resource {
 	return &resource{
 		nodes:  make(map[string]*node),
-		online: make(map[string]*shardTable),
+		tables: make(map[string]*shardTable),
 	}
 }
 
@@ -44,7 +44,7 @@ func (r *resource) getTable(namespace string) (*shardTable, bool) {
 	r.RLock()
 	defer r.RUnlock()
 
-	table, ok := r.online[namespace]
+	table, ok := r.tables[namespace]
 	return table, ok
 }
 
@@ -57,6 +57,6 @@ func (r *resource) updateTable(
 	defer r.Unlock()
 
 	t := newTable(namespace, shardNum, replicaFactor)
-	r.online[namespace] = t
+	r.tables[namespace] = t
 	return t
 }

@@ -3,6 +3,7 @@ package metad
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -24,6 +25,9 @@ func newResource(dataDir string) *resource {
 		dataDir: dataDir,
 		nodes:   make(map[string]*node),
 		tables:  make(map[string]*shardTable),
+	}
+	if err := os.MkdirAll(dataDir, 0755); err != nil && !os.IsExist(err) {
+		log.Fatal(err)
 	}
 	files, err := ioutil.ReadDir(dataDir)
 	if err != nil {

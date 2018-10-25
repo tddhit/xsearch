@@ -32,10 +32,7 @@ message RegisterNodeReq {
     }
     Type type = 1;
     string addr = 2;
-    string namespace = 3;
-    uint32 groupID = 4;
-    uint32 replicaID = 5;
-    uint32 todoID = 6;
+    string shardID = 3;
 }
 
 message RegisterNodeRsp {
@@ -99,7 +96,7 @@ message AutoBalanceRsp {
 
 message MigrateShardReq {
     string namespace = 1;
-    uint32 shardID = 2;    
+    uint32 groupID = 2;    
     uint32 replicaID = 3;
     string fromNode = 4;
     string toNode = 5;

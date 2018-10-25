@@ -15,6 +15,8 @@ func main() {
 	app.Commands = []cli.Command{
 		metadCommand,
 		searchdCommand,
+		proxyCommand,
+		clientCommand,
 	}
 	err := app.Run(os.Args)
 	if err != nil {

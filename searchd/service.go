@@ -2,26 +2,35 @@ package searchd
 
 import (
 	"context"
+	"io"
+	"time"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/tddhit/box/transport"
-	diskqueuepb "github.com/tddhit/diskqueue/pb"
-	"github.com/tddhit/tools/log"
 	"github.com/urfave/cli"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/tddhit/box/mw"
+	"github.com/tddhit/box/transport"
+	"github.com/tddhit/diskqueue/pb"
+	"github.com/tddhit/tools/log"
 	"github.com/tddhit/xsearch/metad/pb"
 	"github.com/tddhit/xsearch/searchd/pb"
 )
 
 type service struct {
+	addr     string
 	resource *resource
 	metad    metadpb.MetadGrpcClient
 	diskq    diskqueuepb.DiskqueueGrpcClient
+	exitC    chan struct{}
 }
 
 func NewService(ctx *cli.Context) *service {
+	if !mw.IsWorker() {
+		return nil
+	}
+	addr := ctx.String("addr")
 	dataDir := ctx.String("datadir")
 	metadAddr := ctx.String("metad")
 	dqAddr := ctx.String("diskqueue")
@@ -32,17 +41,97 @@ func NewService(ctx *cli.Context) *service {
 	if err != nil {
 		log.Fatal(err)
 	}
-	diskq := diskqueuepb.NewDiskqueueGrpcClient(conn)
+	metad := metadpb.NewMetadGrpcClient(conn)
 	conn, err = transport.Dial(dqAddr)
 	if err != nil {
 		log.Fatal(err)
 	}
-	metad := metadpb.NewMetadGrpcClient(conn)
-	return &service{
+	diskq := diskqueuepb.NewDiskqueueGrpcClient(conn)
+	s := &service{
+		addr:     addr,
 		resource: newResource(dataDir),
 		metad:    metad,
 		diskq:    diskq,
+		exitC:    make(chan struct{}),
 	}
+	if err := s.registerNode(addr); err != nil {
+		log.Fatal(err)
+	}
+	return s
+}
+
+func (s *service) registerNode(addr string) error {
+	stream, err := s.metad.RegisterNode(context.Background())
+	if err != nil {
+		return err
+	}
+	go s.waitCommand(addr, stream)
+	go s.keepAliveWithMetad(addr, stream)
+	return nil
+}
+
+func (s *service) waitCommand(addr string, stream metadpb.Metad_RegisterNodeClient) {
+	for {
+		rsp, err := stream.Recv()
+		if err == io.EOF {
+			return
+		}
+		if err != nil {
+			log.Error(err)
+			return
+		}
+		switch rsp.Type {
+		case metadpb.RegisterNodeRsp_CreateShard:
+			_, err := s.resource.createShard(rsp.ShardID, s.addr, s.diskq)
+			if err != nil {
+				log.Error(err)
+				continue
+			}
+			err = stream.Send(&metadpb.RegisterNodeReq{
+				Type:    metadpb.RegisterNodeReq_RegisterShard,
+				Addr:    addr,
+				ShardID: rsp.ShardID,
+			})
+			if err != nil {
+				log.Error(err)
+			}
+		case metadpb.RegisterNodeRsp_RemoveShard:
+			if err := s.resource.removeShard(rsp.ShardID); err != nil {
+				log.Error(err)
+			}
+			err := stream.Send(&metadpb.RegisterNodeReq{
+				Type:    metadpb.RegisterNodeReq_UnregisterShard,
+				Addr:    addr,
+				ShardID: rsp.ShardID,
+			})
+			if err != nil {
+				log.Error(err)
+			}
+		}
+	}
+}
+
+func (s *service) keepAliveWithMetad(
+	addr string,
+	stream metadpb.Metad_RegisterNodeClient) {
+
+	ticker := time.NewTicker(time.Second)
+	for {
+		select {
+		case <-ticker.C:
+			err := stream.Send(&metadpb.RegisterNodeReq{
+				Type: metadpb.RegisterNodeReq_Heartbeat,
+				Addr: addr,
+			})
+			if err != nil {
+				log.Error(err)
+			}
+		case <-s.exitC:
+			goto exit
+		}
+	}
+exit:
+	ticker.Stop()
 }
 
 func (s *service) IndexDoc(ctx context.Context,
@@ -57,7 +146,7 @@ func (s *service) IndexDoc(ctx context.Context,
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	_, err = s.diskq.Push(context.Background(), &diskqueuepb.PushRequest{
+	_, err = s.diskq.Push(context.Background(), &diskqueuepb.PushReq{
 		Topic: req.ShardID,
 		Data:  data,
 	})
@@ -79,7 +168,7 @@ func (s *service) RemoveDoc(ctx context.Context,
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	_, err = s.diskq.Push(context.Background(), &diskqueuepb.PushRequest{
+	_, err = s.diskq.Push(context.Background(), &diskqueuepb.PushReq{
 		Topic: req.ShardID,
 		Data:  data,
 	})

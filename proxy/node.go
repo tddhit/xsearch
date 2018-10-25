@@ -1,10 +1,9 @@
-package service
+package proxy
 
 import (
 	"github.com/tddhit/box/transport"
 	"github.com/tddhit/tools/log"
-
-	searchdpb "github.com/tddhit/xsearch/searchd/pb"
+	"github.com/tddhit/xsearch/searchd/pb"
 )
 
 type node struct {

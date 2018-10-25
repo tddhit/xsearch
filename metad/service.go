@@ -9,6 +9,8 @@ import (
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 
+	"github.com/tddhit/box/mw"
+	"github.com/tddhit/tools/log"
 	"github.com/tddhit/xsearch/metad/pb"
 )
 
@@ -18,6 +20,9 @@ type service struct {
 }
 
 func NewService(ctx *cli.Context) *service {
+	if !mw.IsWorker() {
+		return nil
+	}
 	dataDir := ctx.String("datadir")
 	return &service{
 		reception: newReception(),
@@ -67,6 +72,7 @@ func (s *service) RegisterNode(stream metadpb.Metad_RegisterNodeServer) error {
 	if err != nil {
 		return err
 	}
+	log.Debug(req.Addr)
 	n, err := s.resource.createNode(req.Addr)
 	if err != nil {
 		return status.Error(codes.Internal, err.Error())
@@ -102,7 +108,7 @@ func (s *service) CreateNamespace(
 	return &metadpb.CreateNamespaceRsp{}, nil
 }
 
-func (s *service) DropNamesapce(
+func (s *service) DropNamespace(
 	ctx context.Context,
 	req *metadpb.DropNamespaceReq) (*metadpb.DropNamespaceRsp, error) {
 
@@ -157,7 +163,7 @@ func (s *service) MigrateShard(
 	req *metadpb.MigrateShardReq) (*metadpb.MigrateShardRsp, error) {
 
 	table := ctx.Value(tableContextKey).(*shardTable)
-	shard, err := table.getShard(int(req.ShardID), int(req.ReplicaID))
+	shard, err := table.getShard(int(req.GroupID), int(req.ReplicaID))
 	if err != nil {
 		return nil, status.Error(codes.NotFound, err.Error())
 	}
@@ -176,7 +182,7 @@ func (s *service) MigrateShard(
 }
 
 func (s *service) Info(
-	ctx *context.Context,
+	ctx context.Context,
 	req *metadpb.InfoReq) (*metadpb.InfoRsp, error) {
 
 	return &metadpb.InfoRsp{}, nil

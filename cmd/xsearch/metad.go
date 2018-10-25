@@ -1,12 +1,12 @@
 package main
 
 import (
+	"github.com/urfave/cli"
+
 	"github.com/tddhit/box/mw"
 	"github.com/tddhit/box/transport"
 	tropt "github.com/tddhit/box/transport/option"
 	"github.com/tddhit/tools/log"
-	"github.com/urfave/cli"
-
 	"github.com/tddhit/xsearch/metad"
 	"github.com/tddhit/xsearch/metad/pb"
 )
@@ -24,6 +24,11 @@ var metadCommand = cli.Command{
 			Name:  "addr",
 			Usage: "listen address",
 			Value: "127.0.0.1:10100",
+		},
+		cli.StringFlag{
+			Name:  "datadir",
+			Usage: "data directory",
+			Value: "./data",
 		},
 	},
 }
