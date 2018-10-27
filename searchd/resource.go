@@ -2,6 +2,7 @@ package searchd
 
 import (
 	"errors"
+	"path"
 	"sync"
 
 	"github.com/tddhit/diskqueue/pb"
@@ -44,7 +45,7 @@ func (r *resource) createShard(
 	if s, ok := r.shards[id]; ok {
 		return s, errAlreadyExists
 	}
-	s := newShard(id, r.dir, channel, c)
+	s := newShard(id, path.Join(r.dir, id), channel, c)
 	r.shards[id] = s
 	return s, nil
 }
