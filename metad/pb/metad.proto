@@ -106,10 +106,10 @@ message MigrateShardRsp {
 }
 
 message InfoReq {
-    string namespace = 1;
 }
 
 message InfoRsp {
+    Resource resource = 1;
 }
 
 message CommitReq {
@@ -129,4 +129,22 @@ message Metadata {
     uint32 shardNum = 2;
     uint32 replicaFactor = 3;
     repeated Shard shards = 4;
+}
+
+message Resource {
+    message Shard {
+        string ID = 1;
+        string node = 2;
+        string next = 3;
+        string todo = 4;
+    }
+    message Table {
+        string namespace = 1;
+        uint32 shardNum = 2;
+        uint32 replicaFactor = 3;
+        repeated string nodes = 4;
+        repeated Shard shards = 5;
+    }
+    repeated string nodes = 1;
+    map<string, Table> tables = 2;
 }

@@ -10,7 +10,6 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/tddhit/box/mw"
-	"github.com/tddhit/tools/log"
 	"github.com/tddhit/xsearch/metad/pb"
 )
 
@@ -72,7 +71,6 @@ func (s *service) RegisterNode(stream metadpb.Metad_RegisterNodeServer) error {
 	if err != nil {
 		return err
 	}
-	log.Debug(req.Addr)
 	n, err := s.resource.createNode(req.Addr)
 	if err != nil {
 		return status.Error(codes.Internal, err.Error())
@@ -185,7 +183,9 @@ func (s *service) Info(
 	ctx context.Context,
 	req *metadpb.InfoReq) (*metadpb.InfoRsp, error) {
 
-	return &metadpb.InfoRsp{}, nil
+	res := &metadpb.Resource{}
+	s.resource.marshalTo(res)
+	return &metadpb.InfoRsp{Resource: res}, nil
 }
 
 func (s *service) Commit(
@@ -196,5 +196,8 @@ func (s *service) Commit(
 	if err := table.commit(); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	meta := &metadpb.Metadata{}
+	table.marshalTo(meta)
+	s.reception.broadcast(meta)
 	return &metadpb.CommitRsp{}, nil
 }

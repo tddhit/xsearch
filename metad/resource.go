@@ -60,7 +60,7 @@ func (r *resource) createNode(addr string) (*node, error) {
 	if n, ok := r.nodes[addr]; ok {
 		return n, fmt.Errorf("node(%s) already exists", addr)
 	}
-	n := newNode(addr, NODE_INITIAL)
+	n := newNode(addr, NODE_ISOLATED_ONLINE)
 	r.nodes[addr] = n
 	return n, nil
 }
@@ -130,7 +130,7 @@ func (r *resource) loadTable(metaPath string) {
 	}
 	for _, s := range meta.Shards {
 		shard := newShard(meta.Namespace, int(s.GroupID), int(s.ReplicaID))
-		shard.node = newNode(s.NodeAddr, NODE_OFFLINE)
+		shard.node = newNode(s.NodeAddr, NODE_CLUSTER_OFFLINE)
 		table.setShard(shard)
 	}
 }
@@ -156,10 +156,46 @@ func (r *resource) activeShards(n *node) {
 	for _, table := range r.tables {
 		for _, group := range table.groups {
 			for _, replica := range group.replicas {
-				if replica.node.addr == n.addr {
+				if replica.node.getAddr() == n.addr {
 					replica.node = n
 				}
 			}
+		}
+	}
+}
+
+func (r *resource) marshalTo(res *metadpb.Resource) {
+	r.RLock()
+	defer r.RUnlock()
+
+	res.Tables = make(map[string]*metadpb.Resource_Table)
+	for _, n := range r.nodes {
+		res.Nodes = append(res.Nodes, n.getStatus())
+	}
+	for _, t := range r.tables {
+		var (
+			shards []*metadpb.Resource_Shard
+			nodes  []string
+		)
+		for _, n := range t.prepare {
+			nodes = append(nodes, n.getStatus())
+		}
+		for _, group := range t.groups {
+			for _, replica := range group.replicas {
+				shards = append(shards, &metadpb.Resource_Shard{
+					ID:   replica.id,
+					Node: replica.node.getStatus(),
+					Next: replica.next.getStatus(),
+					Todo: replica.todo.getInfo(),
+				})
+			}
+		}
+		res.Tables[t.namespace] = &metadpb.Resource_Table{
+			Namespace:     t.namespace,
+			ShardNum:      uint32(t.shardNum),
+			ReplicaFactor: uint32(t.replicaFactor),
+			Nodes:         nodes,
+			Shards:        shards,
 		}
 	}
 }

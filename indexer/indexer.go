@@ -56,6 +56,10 @@ func New(opts ...option.IndexerOption) *Indexer {
 		indexRspC:      make([]chan error, ops.Sharding),
 		exitC:          make(chan struct{}),
 	}
+	if err := os.MkdirAll(idx.opt.IndexDir, 0755); err != nil && !os.IsExist(err) {
+		log.Error(err)
+		return nil
+	}
 	idx.loadSegments()
 	for i := 0; i < int(idx.opt.Sharding); i++ {
 		idx.mu[i] = sync.RWMutex{}

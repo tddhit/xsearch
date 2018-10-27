@@ -3,6 +3,8 @@ package metad
 import (
 	"fmt"
 	"sync"
+
+	metadpb "github.com/tddhit/xsearch/metad/pb"
 )
 
 type reception struct {
@@ -44,4 +46,15 @@ func (r *reception) getOrCreateClient(namespace, addr string) (*client, bool) {
 	r.Unlock()
 
 	return c, true
+}
+
+func (r *reception) broadcast(meta *metadpb.Metadata) {
+	r.RLock()
+	defer r.RUnlock()
+
+	for _, c := range r.clients {
+		c.writeC <- &metadpb.RegisterClientRsp{
+			Table: meta,
+		}
+	}
 }

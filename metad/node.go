@@ -14,10 +14,26 @@ import (
 type nodeStatus int
 
 const (
-	NODE_INITIAL nodeStatus = iota
-	NODE_ONLINE
-	NODE_OFFLINE
+	NODE_ISOLATED_OFFLINE nodeStatus = iota
+	NODE_ISOLATED_ONLINE
+	NODE_CLUSTER_OFFLINE
+	NODE_CLUSTER_ONLINE
 )
+
+func (ns nodeStatus) String() string {
+	switch ns {
+	case NODE_ISOLATED_OFFLINE:
+		return "isolated offline"
+	case NODE_ISOLATED_ONLINE:
+		return "isolated online"
+	case NODE_CLUSTER_OFFLINE:
+		return "cluster offline"
+	case NODE_CLUSTER_ONLINE:
+		return "cluster online"
+	default:
+		return "unknown"
+	}
+}
 
 type node struct {
 	addr   string
@@ -32,6 +48,22 @@ func newNode(addr string, status nodeStatus) *node {
 		status: status,
 		readC:  make(chan *metadpb.RegisterNodeReq, 100),
 		writeC: make(chan *metadpb.RegisterNodeRsp, 100),
+	}
+}
+
+func (n *node) getAddr() string {
+	if n == nil {
+		return ""
+	} else {
+		return n.addr
+	}
+}
+
+func (n *node) getStatus() string {
+	if n == nil {
+		return ""
+	} else {
+		return n.addr + ":" + n.status.String()
 	}
 }
 
@@ -65,8 +97,8 @@ func (n *node) readLoop(r *resource) {
 				if err != nil {
 					break
 				}
-				if shard.backup.addr != req.Addr {
-					log.Errorf("no match: %s != %s", shard.backup.addr, req.Addr)
+				if shard.next.addr != req.Addr {
+					log.Errorf("no match: %s != %s", shard.next.addr, req.Addr)
 					break
 				}
 				shard.execTodo()
@@ -97,6 +129,7 @@ exit:
 func (n *node) writeLoop(stream metadpb.Metad_RegisterNodeServer) {
 	for {
 		rsp := <-n.writeC
+		log.Debug("rsp")
 		if rsp == nil {
 			goto exit
 		}
@@ -131,7 +164,7 @@ func (n *node) close() {
 		close(n.writeC)
 		n.writeC = nil
 	}
-	if n.status == NODE_ONLINE {
-		n.status = NODE_OFFLINE
+	if n.status == NODE_CLUSTER_ONLINE {
+		n.status = NODE_CLUSTER_OFFLINE
 	}
 }

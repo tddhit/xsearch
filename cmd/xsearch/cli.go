@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 
+	"github.com/gogo/protobuf/jsonpb"
 	"github.com/urfave/cli"
 
 	"github.com/tddhit/box/transport"
@@ -11,10 +12,21 @@ import (
 )
 
 var clientCommand = cli.Command{
-	Name:      "client",
-	Usage:     "client tools for manipulating clusters",
-	Action:    startClient,
-	UsageText: "xsearch client [create|drop|add|remove|balance|migrate|info|commit] [arguments...]",
+	Name:   "client",
+	Usage:  "client tools for manipulating clusters",
+	Action: startClient,
+	UsageText: `xsearch client operation [arguments...]
+
+operation list:
+create -> create namespace, require args n(namespace)/s(shardNum)/r(ReplicaFactor)
+drop -> drop namespace, require args n(namespace)
+add -> add node to namespace, require args n(namespace)/a(addr)
+remove -> remove node from namespace, require args n(namespace)/a(addr)
+balance -> auto balance, require args n(namespace)
+migrate -> migrate shard, require args n(namespace)/g(groupID)/r(replicaID)/f(fromNode)/t(toNode)
+info ->  node/namespace infomation, no args
+commit -> commit operation, require args n(namespace)
+`,
 	Flags: []cli.Flag{
 		cli.StringFlag{
 			Name:  "metad",
@@ -25,13 +37,17 @@ var clientCommand = cli.Command{
 			Name:  "n",
 			Usage: "namespace",
 		},
-		cli.StringFlag{
+		cli.IntFlag{
 			Name:  "g",
 			Usage: "groupID",
 		},
-		cli.StringFlag{
+		cli.IntFlag{
+			Name:  "s",
+			Usage: "shardNum",
+		},
+		cli.IntFlag{
 			Name:  "r",
-			Usage: "replicaID",
+			Usage: "replicaID or replicaFactor",
 		},
 		cli.StringFlag{
 			Name:  "f",
@@ -69,9 +85,10 @@ func startClient(params *cli.Context) {
 		execMigrate(params, client)
 	case "info":
 		execInfo(params, client)
-	case "commmit":
+	case "commit":
 		execCommit(params, client)
 	}
+	println("ok")
 }
 
 func execCreate(params *cli.Context, client metadpb.MetadGrpcClient) {
@@ -85,7 +102,7 @@ func execCreate(params *cli.Context, client metadpb.MetadGrpcClient) {
 		},
 	)
 	if err != nil {
-		log.Error(err)
+		log.Fatal(err)
 	}
 }
 
@@ -97,7 +114,7 @@ func execDrop(params *cli.Context, client metadpb.MetadGrpcClient) {
 		},
 	)
 	if err != nil {
-		log.Error(err)
+		log.Fatal(err)
 	}
 }
 
@@ -110,7 +127,7 @@ func execAdd(params *cli.Context, client metadpb.MetadGrpcClient) {
 		},
 	)
 	if err != nil {
-		log.Error(err)
+		log.Fatal(err)
 	}
 }
 
@@ -123,7 +140,7 @@ func execRemove(params *cli.Context, client metadpb.MetadGrpcClient) {
 		},
 	)
 	if err != nil {
-		log.Error(err)
+		log.Fatal(err)
 	}
 }
 
@@ -135,7 +152,7 @@ func execBalance(params *cli.Context, client metadpb.MetadGrpcClient) {
 		},
 	)
 	if err != nil {
-		log.Error(err)
+		log.Fatal(err)
 	}
 }
 
@@ -151,19 +168,26 @@ func execMigrate(params *cli.Context, client metadpb.MetadGrpcClient) {
 		},
 	)
 	if err != nil {
-		log.Error(err)
+		log.Fatal(err)
 	}
 }
 
 func execInfo(params *cli.Context, client metadpb.MetadGrpcClient) {
-	_, err := client.Info(
+	rsp, err := client.Info(
 		context.Background(),
-		&metadpb.InfoReq{
-			Namespace: params.String("n"),
-		},
+		&metadpb.InfoReq{},
 	)
 	if err != nil {
-		log.Error(err)
+		log.Fatal(err)
+	}
+	marshaler := &jsonpb.Marshaler{
+		EnumsAsInts: true,
+		Indent:      "    ",
+	}
+	if s, err := marshaler.MarshalToString(rsp); err != nil {
+		log.Fatal(err)
+	} else {
+		println(s)
 	}
 }
 
@@ -175,6 +199,6 @@ func execCommit(params *cli.Context, client metadpb.MetadGrpcClient) {
 		},
 	)
 	if err != nil {
-		log.Error(err)
+		log.Fatal(err)
 	}
 }

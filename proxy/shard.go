@@ -31,8 +31,10 @@ func newTable(namespace string, shardNum, replicaFactor int) *shardTable {
 		replicaFactor: replicaFactor,
 		groups:        make([]*shardGroup, shardNum),
 	}
-	for _, group := range t.groups {
-		group.replicas = make([]*shard, replicaFactor)
+	for i, _ := range t.groups {
+		t.groups[i] = &shardGroup{
+			replicas: make([]*shard, replicaFactor),
+		}
 	}
 	return t
 }

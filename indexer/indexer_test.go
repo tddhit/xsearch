@@ -17,7 +17,7 @@ import (
 	"github.com/tddhit/tools/log"
 	"github.com/tddhit/tools/mmap"
 	"github.com/tddhit/xsearch/indexer/option"
-	"github.com/tddhit/xsearch/xsearchpb"
+	"github.com/tddhit/xsearch/pb"
 )
 
 func TestSearch(t *testing.T) {
@@ -244,7 +244,7 @@ func TestWriteFile(t *testing.T) {
 }
 
 func TestWriteMmap2(t *testing.T) {
-	file, err := mmap.New("test/1_0_0.invert", 1<<30, mmap.CREATE)
+	file, err := mmap.New("test/1_0_0.invert", 1<<30, mmap.CREATE, mmap.RANDOM)
 	if err != nil {
 		log.Fatal(err)
 	}

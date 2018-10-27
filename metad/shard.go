@@ -34,7 +34,7 @@ type shard struct {
 	table     *shardTable
 	node      *node
 	todo      *todo
-	backup    *node
+	next      *node
 }
 
 func newTable(namespace string, shardNum, replicaFactor int) *shardTable {
@@ -45,8 +45,14 @@ func newTable(namespace string, shardNum, replicaFactor int) *shardTable {
 		prepare:       make(map[string]*node),
 		groups:        make([]*shardGroup, shardNum),
 	}
-	for _, group := range t.groups {
-		group.replicas = make([]*shard, replicaFactor)
+	for i, _ := range t.groups {
+		t.groups[i] = &shardGroup{
+			replicas: make([]*shard, replicaFactor),
+		}
+		for j, _ := range t.groups[i].replicas {
+			s := newShard(namespace, i, j)
+			t.setShard(s)
+		}
 	}
 	return t
 }
@@ -96,11 +102,14 @@ func (t *shardTable) autoBalance() error {
 	defer t.Unlock()
 
 	if !t.initial {
-		err := t.firstAllocate()
+		if err := t.firstAllocate(); err != nil {
+			return err
+		}
 		t.initial = true
-		return err
+	} else {
+		// TODO
 	}
-	// TODO: diff
+	t.diff()
 	return nil
 }
 
@@ -121,13 +130,27 @@ func (t *shardTable) firstAllocate() error {
 			if k >= len(nodes) {
 				k = 0
 			}
-			s := newShard(t.namespace, i, j)
-			s.node = nodes[k]
-			t.setShard(s)
+			log.Debug(i, j, nodes[k].addr)
+			t.groups[i].replicas[j].next = nodes[k]
 			k++
 		}
 	}
 	return nil
+}
+
+func (t *shardTable) diff() {
+	for _, group := range t.groups {
+		for _, replica := range group.replicas {
+			if replica.next == nil {
+				continue
+			}
+			if replica.node == nil {
+				newTodo(ACTION_CREATE_SHARD, replica.next, nil, replica)
+			} else {
+				newTodo(ACTION_MIGRATE_SHARD, replica.node, replica.next, replica)
+			}
+		}
+	}
 }
 
 func (t *shardTable) migrate(s *shard, from, to *node) error {
@@ -137,9 +160,7 @@ func (t *shardTable) migrate(s *shard, from, to *node) error {
 	if !t.initial {
 		return errors.New("Need to perfrom AutoBalance first")
 	}
-	todo := newTodo(ACTION_MIGRATE_SHARD, from, to, s)
-	s.todo = todo
-	s.backup = to
+	newTodo(ACTION_MIGRATE_SHARD, from, to, s)
 	return nil
 }
 
@@ -147,8 +168,13 @@ func (t *shardTable) commit() error {
 	t.Lock()
 	defer t.Unlock()
 
+	log.Debug("commit")
 	for _, group := range t.groups {
 		for _, replica := range group.replicas {
+			if replica.todo == nil {
+				continue
+			}
+			log.Debug("todo")
 			replica.todo.do()
 		}
 	}
@@ -196,6 +222,24 @@ func (t *shardTable) persist(path string) {
 	f.Close()
 	if err := os.Rename(tmp, path); err != nil {
 		log.Error(err)
+	}
+}
+
+func (t *shardTable) marshalTo(meta *metadpb.Metadata) {
+	t.RLock()
+	defer t.RUnlock()
+
+	meta.Namespace = t.namespace
+	meta.ShardNum = uint32(t.shardNum)
+	meta.ReplicaFactor = uint32(t.replicaFactor)
+	for _, group := range t.groups {
+		for _, replica := range group.replicas {
+			meta.Shards = append(meta.Shards, &metadpb.Metadata_Shard{
+				GroupID:   uint32(replica.groupID),
+				ReplicaID: uint32(replica.replicaID),
+				NodeAddr:  replica.node.getAddr(),
+			})
+		}
 	}
 }
 

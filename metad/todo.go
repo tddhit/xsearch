@@ -1,6 +1,8 @@
 package metad
 
 import (
+	"fmt"
+
 	"github.com/tddhit/tools/log"
 
 	"github.com/tddhit/xsearch/metad/pb"
@@ -13,6 +15,17 @@ const (
 	ACTION_MIGRATE_SHARD
 )
 
+func (a action) String() string {
+	switch a {
+	case ACTION_CREATE_SHARD:
+		return "create shard"
+	case ACTION_MIGRATE_SHARD:
+		return "migrate shard"
+	default:
+		return "unknown"
+	}
+}
+
 type todo struct {
 	action action
 	from   *node
@@ -22,37 +35,55 @@ type todo struct {
 	stages []func() error
 }
 
-func newTodo(a action, from, to *node, s *shard) *todo {
+func newTodo(a action, from, to *node, s *shard) {
 	d := &todo{
 		action: a,
 		from:   from,
 		to:     to,
 		shard:  s,
 	}
+	s.todo = d
 	switch d.action {
 	case ACTION_CREATE_SHARD:
 		d.buildCreateStages()
 	case ACTION_MIGRATE_SHARD:
 		d.buildMigrateStages()
 	}
-	return d
+}
+
+func (d *todo) getInfo() string {
+	if d == nil {
+		return ""
+	}
+	switch d.action {
+	case ACTION_CREATE_SHARD:
+		return d.action.String() + ":" + d.from.addr
+	case ACTION_MIGRATE_SHARD:
+		return fmt.Sprintf("%s: %s -> %s", d.action.String(), d.from.addr, d.to.addr)
+	default:
+		return "unknown"
+	}
 }
 
 func (d *todo) do() (int, error) {
+	log.Debug("do 1", len(d.stages))
 	if len(d.stages) == 0 {
 		return 0, nil
 	}
+	log.Debug("do 2")
 	stageFunc := d.stages[0]
 	if err := stageFunc(); err != nil {
 		log.Error(err)
 		return len(d.stages), err
 	}
 	d.stages = d.stages[1:]
+	log.Debug("do 3", len(d.stages))
 	return len(d.stages), nil
 }
 
 func (d *todo) buildCreateStages() {
 	d.stages = append(d.stages, func() error {
+		log.Debug("create 1")
 		d.from.writeC <- &metadpb.RegisterNodeRsp{
 			Type:    metadpb.RegisterNodeRsp_CreateShard,
 			ShardID: d.shard.id,
@@ -61,7 +92,9 @@ func (d *todo) buildCreateStages() {
 	})
 
 	d.stages = append(d.stages, func() error {
-		d.from.status = NODE_ONLINE
+		log.Debug("create 2")
+		d.from.status = NODE_CLUSTER_ONLINE
+		d.shard.node = d.from
 		return nil
 	})
 }
@@ -76,9 +109,9 @@ func (d *todo) buildMigrateStages() {
 	})
 
 	d.stages = append(d.stages, func() error {
-		d.from.status = NODE_ONLINE
+		d.to.status = NODE_CLUSTER_ONLINE
 		d.shard.node = d.to
-		d.shard.backup = nil
+		d.shard.next = nil
 		d.from.writeC <- &metadpb.RegisterNodeRsp{
 			Type:    metadpb.RegisterNodeRsp_RemoveShard,
 			ShardID: d.shard.id,

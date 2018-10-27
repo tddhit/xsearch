@@ -49,6 +49,8 @@ func CheckParams(s *service) interceptor.UnaryServerMiddleware {
 				namespace = req.(*metadpb.MigrateShardReq).Namespace
 			case "/metadpb.Metad/Commit":
 				namespace = req.(*metadpb.CommitReq).Namespace
+			default:
+				return next(ctx, req, info)
 			}
 			if namespace == "" {
 				return nil, status.Error(codes.NotFound, "namespace")
