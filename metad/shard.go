@@ -14,7 +14,6 @@ import (
 )
 
 type shardTable struct {
-	sync.RWMutex
 	namespace     string
 	shardNum      int
 	replicaFactor int
@@ -58,9 +57,6 @@ func newTable(namespace string, shardNum, replicaFactor int) *shardTable {
 }
 
 func (t *shardTable) addNode(n *node) error {
-	t.Lock()
-	defer t.Unlock()
-
 	if _, ok := t.prepare[n.addr]; ok {
 		return fmt.Errorf("node(%s) already exist", n.addr)
 	}
@@ -69,16 +65,10 @@ func (t *shardTable) addNode(n *node) error {
 }
 
 func (t *shardTable) removeNode(addr string) {
-	t.Lock()
-	defer t.Unlock()
-
 	delete(t.prepare, addr)
 }
 
 func (t *shardTable) setShard(s *shard) error {
-	t.Lock()
-	defer t.Unlock()
-
 	if s.groupID >= t.shardNum || s.replicaID >= t.replicaFactor {
 		return errors.New("invalid groupID/replicaID ")
 	}
@@ -88,9 +78,6 @@ func (t *shardTable) setShard(s *shard) error {
 }
 
 func (t *shardTable) getShard(groupID, replicaID int) (*shard, error) {
-	t.RLock()
-	defer t.RUnlock()
-
 	if groupID >= t.shardNum || replicaID >= t.replicaFactor {
 		return nil, errors.New("invalid groupID/replicaID ")
 	}
@@ -98,9 +85,6 @@ func (t *shardTable) getShard(groupID, replicaID int) (*shard, error) {
 }
 
 func (t *shardTable) autoBalance() error {
-	t.Lock()
-	defer t.Unlock()
-
 	if !t.initial {
 		if err := t.firstAllocate(); err != nil {
 			return err
@@ -154,9 +138,6 @@ func (t *shardTable) diff() {
 }
 
 func (t *shardTable) migrate(s *shard, from, to *node) error {
-	t.Lock()
-	defer t.Unlock()
-
 	if !t.initial {
 		return errors.New("Need to perfrom AutoBalance first")
 	}
@@ -165,26 +146,23 @@ func (t *shardTable) migrate(s *shard, from, to *node) error {
 }
 
 func (t *shardTable) commit() error {
-	t.Lock()
-	defer t.Unlock()
-
 	log.Debug("commit")
+	var wg sync.WaitGroup
 	for _, group := range t.groups {
 		for _, replica := range group.replicas {
 			if replica.todo == nil {
 				continue
 			}
+			wg.Add(1)
 			log.Debug("todo")
-			replica.todo.do()
+			replica.todo.do(&wg)
 		}
 	}
+	wg.Wait()
 	return nil
 }
 
 func (t *shardTable) persist(path string) {
-	t.RLock()
-	defer t.RUnlock()
-
 	meta := &metadpb.Metadata{
 		Namespace:     t.namespace,
 		ShardNum:      uint32(t.shardNum),
@@ -193,9 +171,10 @@ func (t *shardTable) persist(path string) {
 	for _, group := range t.groups {
 		for _, replica := range group.replicas {
 			meta.Shards = append(meta.Shards, &metadpb.Metadata_Shard{
-				GroupID:   uint32(replica.groupID),
-				ReplicaID: uint32(replica.replicaID),
-				NodeAddr:  replica.node.addr,
+				GroupID:    uint32(replica.groupID),
+				ReplicaID:  uint32(replica.replicaID),
+				NodeAddr:   replica.node.getAddr(),
+				NodeStatus: replica.node.getClusterStatus(),
 			})
 		}
 	}
@@ -226,18 +205,17 @@ func (t *shardTable) persist(path string) {
 }
 
 func (t *shardTable) marshalTo(meta *metadpb.Metadata) {
-	t.RLock()
-	defer t.RUnlock()
-
 	meta.Namespace = t.namespace
 	meta.ShardNum = uint32(t.shardNum)
 	meta.ReplicaFactor = uint32(t.replicaFactor)
 	for _, group := range t.groups {
 		for _, replica := range group.replicas {
+			log.Debug(replica.id, replica.node.getInfo(), replica.node.getAddr(), replica.node.getClusterStatus())
 			meta.Shards = append(meta.Shards, &metadpb.Metadata_Shard{
-				GroupID:   uint32(replica.groupID),
-				ReplicaID: uint32(replica.replicaID),
-				NodeAddr:  replica.node.getAddr(),
+				GroupID:    uint32(replica.groupID),
+				ReplicaID:  uint32(replica.replicaID),
+				NodeAddr:   replica.node.getAddr(),
+				NodeStatus: replica.node.getClusterStatus(),
 			})
 		}
 	}
@@ -252,16 +230,22 @@ func newShard(namespace string, groupID, replicaID int) *shard {
 }
 
 func (s *shard) execTodo() error {
+	log.Debug("exec 1")
 	if s.todo == nil {
 		return nil
 	}
+	log.Debug("exec 2")
 	count, err := s.todo.do()
+	log.Debug(count, err)
 	if count == 0 {
+		log.Debug("return")
 		s.todo = nil
 		return nil
 	}
 	if err != nil {
+		log.Debug("return")
 		return err
 	}
+	log.Debug("return")
 	return nil
 }

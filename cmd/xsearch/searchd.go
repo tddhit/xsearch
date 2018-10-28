@@ -26,6 +26,11 @@ var searchdCommand = cli.Command{
 			Value: "127.0.0.1:10200",
 		},
 		cli.StringFlag{
+			Name:  "admin",
+			Usage: "admin address",
+			Value: "127.0.0.1:10201",
+		},
+		cli.StringFlag{
 			Name:  "metad",
 			Usage: "metad addr",
 			Value: "127.0.0.1:10100",
@@ -43,11 +48,14 @@ var searchdCommand = cli.Command{
 }
 
 func startSearchd(ctx *cli.Context) {
-	addr := ctx.String("addr")
-	pidPath := ctx.String("pidpath")
-	svc := searchd.NewService(ctx)
+	var resource *searchd.Resource
+	if mw.IsWorker() {
+		resource = searchd.NewResource(ctx.String("datadir"))
+	}
+
+	svc := searchd.NewService(ctx, resource)
 	server, err := transport.Listen(
-		"grpc://"+addr,
+		"grpc://"+ctx.String("addr"),
 		tropt.WithUnaryServerMiddleware(
 			searchd.CheckParams(svc),
 		),
@@ -56,5 +64,17 @@ func startSearchd(ctx *cli.Context) {
 		log.Fatal(err)
 	}
 	server.Register(searchdpb.SearchdGrpcServiceDesc, svc)
-	mw.Run(mw.WithServer(server), mw.WithPIDPath(pidPath))
+
+	admin := searchd.NewAdmin(resource)
+	adminServer, err := transport.Listen("grpc://" + ctx.String("admin"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	adminServer.Register(searchdpb.AdminGrpcServiceDesc, admin)
+
+	mw.Run(
+		mw.WithServer(server),
+		mw.WithServer(adminServer),
+		mw.WithPIDPath(ctx.String("pidpath")),
+	)
 }

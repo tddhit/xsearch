@@ -59,7 +59,19 @@ func (n *node) getAddr() string {
 	}
 }
 
-func (n *node) getStatus() string {
+func (n *node) getClusterStatus() string {
+	if n == nil {
+		return ""
+	} else {
+		if n.status == NODE_CLUSTER_ONLINE {
+			return "online"
+		} else {
+			return "offline"
+		}
+	}
+}
+
+func (n *node) getInfo() string {
 	if n == nil {
 		return ""
 	} else {
@@ -93,16 +105,26 @@ func (n *node) readLoop(r *resource) {
 			}
 			switch req.Type {
 			case metadpb.RegisterNodeReq_RegisterShard:
+				log.Debug("register shard")
 				shard, err := r.getShard(namespace, groupID, replicaID)
+				log.Debug("!")
 				if err != nil {
+					log.Debug("!")
+					log.Debug(err)
 					break
 				}
+				log.Debug("!")
 				if shard.next.addr != req.Addr {
+					log.Debug("!")
 					log.Errorf("no match: %s != %s", shard.next.addr, req.Addr)
 					break
 				}
+				log.Debug("!")
+				log.Debug("exec todo")
 				shard.execTodo()
+				log.Debug("!")
 			case metadpb.RegisterNodeReq_UnregisterShard:
+				log.Debug("unregister shard")
 				shard, err := r.getShard(namespace, groupID, replicaID)
 				if err != nil {
 					break
@@ -116,6 +138,7 @@ func (n *node) readLoop(r *resource) {
 				}
 				shard.execTodo()
 			case metadpb.RegisterNodeReq_Heartbeat:
+				log.Debug("heartbeat")
 			}
 		case <-timer.C:
 			goto exit

@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/tddhit/diskqueue/pb"
+	"github.com/tddhit/xsearch/searchd/pb"
 )
 
 var (
@@ -13,20 +14,20 @@ var (
 	errAlreadyExists = errors.New("already exists")
 )
 
-type resource struct {
+type Resource struct {
 	sync.RWMutex
 	dir    string
 	shards map[string]*shard
 }
 
-func newResource(dir string) *resource {
-	return &resource{
+func NewResource(dir string) *Resource {
+	return &Resource{
 		dir:    dir,
 		shards: make(map[string]*shard),
 	}
 }
 
-func (r *resource) getShard(id string) (*shard, bool) {
+func (r *Resource) getShard(id string) (*shard, bool) {
 	r.RLock()
 	defer r.RUnlock()
 
@@ -34,7 +35,7 @@ func (r *resource) getShard(id string) (*shard, bool) {
 	return s, ok
 }
 
-func (r *resource) createShard(
+func (r *Resource) createShard(
 	id string,
 	channel string,
 	c diskqueuepb.DiskqueueGrpcClient) (*shard, error) {
@@ -50,7 +51,7 @@ func (r *resource) createShard(
 	return s, nil
 }
 
-func (r *resource) removeShard(id string) error {
+func (r *Resource) removeShard(id string) error {
 	r.Lock()
 	defer r.Unlock()
 
@@ -63,4 +64,13 @@ func (r *resource) removeShard(id string) error {
 	}
 	delete(r.shards, id)
 	return nil
+}
+
+func (r *Resource) marshalTo(rsp *searchdpb.InfoRsp) {
+	r.RLock()
+	defer r.RUnlock()
+
+	for _, s := range r.shards {
+		rsp.Shards = append(rsp.Shards, s.id)
+	}
 }

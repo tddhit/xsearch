@@ -1,11 +1,13 @@
 package types
 
+type DocumentID [16]byte
+
 type Posting struct {
 	next, prev *Posting
 
 	list *PostingList
 
-	DocID uint64
+	DocID string
 	Freq  uint32
 }
 

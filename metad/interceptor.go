@@ -25,6 +25,9 @@ func CheckParams(s *service) interceptor.UnaryServerMiddleware {
 		return func(ctx context.Context, req interface{},
 			info *common.UnaryServerInfo) (interface{}, error) {
 
+			s.resource.Lock()
+			defer s.resource.Unlock()
+
 			log.Info(info.FullMethod)
 			var (
 				namespace  string

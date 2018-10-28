@@ -25,11 +25,11 @@ import (
 
 type service struct {
 	metad    metadpb.MetadGrpcClient
-	resource *resource
+	resource *Resource
 	exitC    chan struct{}
 }
 
-func NewService(ctx *cli.Context) *service {
+func NewService(ctx *cli.Context, r *Resource) *service {
 	if !mw.IsWorker() {
 		return nil
 	}
@@ -41,7 +41,7 @@ func NewService(ctx *cli.Context) *service {
 	}
 	s := &service{
 		metad:    metadpb.NewMetadGrpcClient(conn),
-		resource: newResource(),
+		resource: r,
 		exitC:    make(chan struct{}),
 	}
 	nss := strings.Split(namespaces, ",")
@@ -73,14 +73,13 @@ func (s *service) watchShardTable(stream metadpb.Metad_RegisterClientClient) {
 			log.Error(err)
 			return
 		}
-		log.Debug(rsp)
 		table := s.resource.updateTable(
 			rsp.Table.Namespace,
 			int(rsp.Table.ShardNum),
 			int(rsp.Table.ReplicaFactor),
 		)
 		for _, ss := range rsp.Table.Shards {
-			n, err := s.resource.getOrCreateNode(ss.NodeAddr)
+			n, err := s.resource.getOrCreateNode(ss.NodeAddr, ss.NodeStatus)
 			if err != nil {
 				log.Error(err)
 				continue
@@ -143,7 +142,7 @@ func (s *service) IndexDoc(
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	return &proxypb.IndexDocRsp{DocID: string(id[:])}, nil
+	return &proxypb.IndexDocRsp{DocID: id.String()}, nil
 }
 
 func (s *service) RemoveDoc(
@@ -185,7 +184,24 @@ func (s *service) Search(
 		go func(i int) {
 			defer wg.Done()
 
-			shard, _ := table.getShard(i, 0)
+			var (
+				key       = hash([]byte(req.Query.Raw))
+				replicaID = key % uint64(table.replicaFactor)
+				shard     *shard
+				tryCount  int
+			)
+			for {
+				tryCount++
+				shard, _ = table.getShard(i, int(replicaID)%table.replicaFactor)
+				if shard.node.status == "online" {
+					log.Debug("connect", i, int(replicaID)%table.replicaFactor)
+					break
+				}
+				replicaID++
+				if tryCount == table.replicaFactor {
+					return
+				}
+			}
 			rsp, err := shard.node.client.Search(ctx, &searchdpb.SearchReq{
 				ShardID: shard.id,
 				Query:   req.Query,

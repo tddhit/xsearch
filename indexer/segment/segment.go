@@ -101,7 +101,7 @@ func (s *Segment) IndexDocument(doc *xsearchpb.Document) error {
 func (s *Segment) Search(query *xsearchpb.Query,
 	start uint64, count int32) (docs []*xsearchpb.Document, err error) {
 
-	doc2BM25 := make(map[uint64]float32)
+	doc2BM25 := make(map[string]float32)
 	docHeap := &DocHeap{}
 	heap.Init(docHeap)
 	for _, token := range query.GetTokens() {
@@ -128,7 +128,7 @@ func (s *Segment) Search(query *xsearchpb.Query,
 	return
 }
 
-func (s *Segment) lookup(key []byte, doc2BM25 map[uint64]float32) error {
+func (s *Segment) lookup(key []byte, doc2BM25 map[[16]byte]float32) error {
 	value := s.vocab.Get(key)
 	if value == nil {
 		log.Error(s.name, errNotFoundKey, string(key))
@@ -141,11 +141,15 @@ func (s *Segment) lookup(key []byte, doc2BM25 map[uint64]float32) error {
 	}
 	off += 8
 	for i := uint64(0); i < count; i++ {
-		docID, err := s.invert.Uint64At(off)
+		bytes, err := s.invert.ReadAt(off, 16)
 		if err != nil {
 			return err
 		}
-		off += 8
+		var docID [16]byte
+		for i := 0; i < len(docID); i++ {
+			docID[i] = bytes[i]
+		}
+		off += 16
 		bits, err := s.invert.Uint32At(off)
 		if err != nil {
 			return err

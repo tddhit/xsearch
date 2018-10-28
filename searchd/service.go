@@ -20,41 +20,34 @@ import (
 
 type service struct {
 	addr     string
-	resource *resource
+	resource *Resource
 	metad    metadpb.MetadGrpcClient
 	diskq    diskqueuepb.DiskqueueGrpcClient
 	exitC    chan struct{}
 }
 
-func NewService(ctx *cli.Context) *service {
+func NewService(ctx *cli.Context, r *Resource) *service {
 	if !mw.IsWorker() {
 		return nil
 	}
-	addr := ctx.String("addr")
-	dataDir := ctx.String("datadir")
-	metadAddr := ctx.String("metad")
-	dqAddr := ctx.String("diskqueue")
-	if dqAddr == "" || metadAddr == "" {
-		log.Fatal("invalid diskqueue/metad address")
-	}
-	conn, err := transport.Dial(metadAddr)
+	conn, err := transport.Dial(ctx.String("metad"))
 	if err != nil {
 		log.Fatal(err)
 	}
 	metad := metadpb.NewMetadGrpcClient(conn)
-	conn, err = transport.Dial(dqAddr)
+	conn, err = transport.Dial(ctx.String("diskqueue"))
 	if err != nil {
 		log.Fatal(err)
 	}
 	diskq := diskqueuepb.NewDiskqueueGrpcClient(conn)
 	s := &service{
-		addr:     addr,
-		resource: newResource(dataDir),
+		addr:     ctx.String("addr"),
+		resource: r,
 		metad:    metad,
 		diskq:    diskq,
 		exitC:    make(chan struct{}),
 	}
-	if err := s.registerNode(addr); err != nil {
+	if err := s.registerNode(s.addr); err != nil {
 		log.Fatal(err)
 	}
 	return s
@@ -82,11 +75,13 @@ func (s *service) waitCommand(addr string, stream metadpb.Metad_RegisterNodeClie
 		}
 		switch rsp.Type {
 		case metadpb.RegisterNodeRsp_CreateShard:
+			log.Debug("create shard")
 			_, err := s.resource.createShard(rsp.ShardID, s.addr, s.diskq)
 			if err != nil {
 				log.Error(err)
 				continue
 			}
+			log.Debug("register shard")
 			err = stream.Send(&metadpb.RegisterNodeReq{
 				Type:    metadpb.RegisterNodeReq_RegisterShard,
 				Addr:    addr,
@@ -96,9 +91,11 @@ func (s *service) waitCommand(addr string, stream metadpb.Metad_RegisterNodeClie
 				log.Error(err)
 			}
 		case metadpb.RegisterNodeRsp_RemoveShard:
+			log.Debug("remove shard")
 			if err := s.resource.removeShard(rsp.ShardID); err != nil {
 				log.Error(err)
 			}
+			log.Debug("unregister shard")
 			err := stream.Send(&metadpb.RegisterNodeReq{
 				Type:    metadpb.RegisterNodeReq_UnregisterShard,
 				Addr:    addr,
@@ -137,6 +134,7 @@ exit:
 func (s *service) IndexDoc(ctx context.Context,
 	req *searchdpb.IndexDocReq) (*searchdpb.IndexDocRsp, error) {
 
+	log.Debug(req.Doc.Raw)
 	data, err := proto.Marshal(&searchdpb.Command{
 		Type: searchdpb.Command_INDEX,
 		DocOneof: &searchdpb.Command_Doc{
@@ -146,6 +144,7 @@ func (s *service) IndexDoc(ctx context.Context,
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	log.Debug(len(data))
 	_, err = s.diskq.Push(context.Background(), &diskqueuepb.PushReq{
 		Topic: req.ShardID,
 		Data:  data,

@@ -4,10 +4,21 @@ package searchdpb;
 
 import "xsearch/pb/xsearch.proto";
 
+service Admin {
+    rpc Info (InfoReq) returns (InfoRsp) {}
+}
+
 service Searchd {
     rpc IndexDoc (IndexDocReq) returns (IndexDocRsp) {}
     rpc RemoveDoc (RemoveDocReq) returns (RemoveDocRsp) {}
     rpc Search (SearchReq) returns (SearchRsp) {}
+}
+
+message InfoReq {
+}
+
+message InfoRsp {
+    repeated string shards = 1;
 }
 
 message IndexDocReq {
@@ -44,7 +55,7 @@ message Command {
     } 
     Type type = 1; 
     oneof doc_oneof {
-        xsearchpb.Document doc = 3;
-        string docID = 4;
+        xsearchpb.Document doc = 2;
+        string docID = 3;
     }
 }

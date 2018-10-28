@@ -25,6 +25,11 @@ var proxyCommand = cli.Command{
 			Value: "127.0.0.1:10300",
 		},
 		cli.StringFlag{
+			Name:  "admin",
+			Usage: "admin address",
+			Value: "127.0.0.1:10301",
+		},
+		cli.StringFlag{
 			Name:  "metad",
 			Usage: "metad addr",
 		},
@@ -36,15 +41,28 @@ var proxyCommand = cli.Command{
 }
 
 func startProxy(ctx *cli.Context) {
-	addr := ctx.String("addr")
-	pidPath := ctx.String("pidpath")
-	svc := proxy.NewService(ctx)
-	server, err := transport.Listen(
-		"grpc://" + addr,
-	)
+	var resource *proxy.Resource
+	if mw.IsWorker() {
+		resource = proxy.NewResource()
+	}
+
+	svc := proxy.NewService(ctx, resource)
+	server, err := transport.Listen("grpc://" + ctx.String("addr"))
 	if err != nil {
 		log.Fatal(err)
 	}
 	server.Register(proxypb.ProxyGrpcServiceDesc, svc)
-	mw.Run(mw.WithServer(server), mw.WithPIDPath(pidPath))
+
+	admin := proxy.NewAdmin(resource)
+	adminServer, err := transport.Listen("grpc://" + ctx.String("admin"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	adminServer.Register(proxypb.AdminGrpcServiceDesc, admin)
+
+	mw.Run(
+		mw.WithServer(server),
+		mw.WithServer(adminServer),
+		mw.WithPIDPath(ctx.String("pidpath")),
+	)
 }

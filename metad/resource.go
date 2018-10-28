@@ -14,7 +14,7 @@ import (
 )
 
 type resource struct {
-	sync.RWMutex
+	sync.Mutex
 	dataDir string
 	nodes   map[string]*node
 	tables  map[string]*shardTable
@@ -46,17 +46,11 @@ func newResource(dataDir string) *resource {
 }
 
 func (r *resource) getNode(addr string) (*node, bool) {
-	r.RLock()
-	defer r.RUnlock()
-
 	n, ok := r.nodes[addr]
 	return n, ok
 }
 
 func (r *resource) createNode(addr string) (*node, error) {
-	r.Lock()
-	defer r.Unlock()
-
 	if n, ok := r.nodes[addr]; ok {
 		return n, fmt.Errorf("node(%s) already exists", addr)
 	}
@@ -66,25 +60,16 @@ func (r *resource) createNode(addr string) (*node, error) {
 }
 
 func (r *resource) removeNode(addr string) {
-	r.Lock()
-	defer r.Unlock()
-
 	delete(r.nodes, addr)
 }
 
 func (r *resource) persistTables() {
-	r.RLock()
-	defer r.RUnlock()
-
 	for _, t := range r.tables {
 		t.persist(r.dataDir)
 	}
 }
 
 func (r *resource) createTable(namespace string, shardNum, replicaFactor int) error {
-	r.Lock()
-	defer r.Unlock()
-
 	if _, ok := r.tables[namespace]; ok {
 		return fmt.Errorf("(%s)already exists in mirror table.", namespace)
 	}
@@ -93,9 +78,6 @@ func (r *resource) createTable(namespace string, shardNum, replicaFactor int) er
 }
 
 func (r *resource) removeTable(namespace string) error {
-	r.Lock()
-	defer r.Unlock()
-
 	if _, ok := r.tables[namespace]; !ok {
 		return fmt.Errorf("not found table(%s)", namespace)
 	}
@@ -104,9 +86,6 @@ func (r *resource) removeTable(namespace string) error {
 }
 
 func (r *resource) getTable(namespace string) (*shardTable, bool) {
-	r.RLock()
-	defer r.RUnlock()
-
 	table, ok := r.tables[namespace]
 	return table, ok
 }
@@ -165,12 +144,9 @@ func (r *resource) activeShards(n *node) {
 }
 
 func (r *resource) marshalTo(res *metadpb.Resource) {
-	r.RLock()
-	defer r.RUnlock()
-
 	res.Tables = make(map[string]*metadpb.Resource_Table)
 	for _, n := range r.nodes {
-		res.Nodes = append(res.Nodes, n.getStatus())
+		res.Nodes = append(res.Nodes, n.getInfo())
 	}
 	for _, t := range r.tables {
 		var (
@@ -178,14 +154,14 @@ func (r *resource) marshalTo(res *metadpb.Resource) {
 			nodes  []string
 		)
 		for _, n := range t.prepare {
-			nodes = append(nodes, n.getStatus())
+			nodes = append(nodes, n.getInfo())
 		}
 		for _, group := range t.groups {
 			for _, replica := range group.replicas {
 				shards = append(shards, &metadpb.Resource_Shard{
 					ID:   replica.id,
-					Node: replica.node.getStatus(),
-					Next: replica.next.getStatus(),
+					Node: replica.node.getInfo(),
+					Next: replica.next.getInfo(),
 					Todo: replica.todo.getInfo(),
 				})
 			}

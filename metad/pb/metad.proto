@@ -124,6 +124,7 @@ message Metadata {
         uint32 groupID = 1;
         uint32 replicaID = 2;
         string nodeAddr = 3;
+        string nodeStatus = 4;
     }
     string namespace = 1;
     uint32 shardNum = 2;

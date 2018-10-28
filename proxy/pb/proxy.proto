@@ -5,6 +5,10 @@ package proxypb;
 import "google/api/annotations.proto";
 import "xsearch/pb/xsearch.proto";
 
+service Admin {
+    rpc Info (InfoReq) returns (InfoRsp) {}
+}
+
 service Proxy {
     rpc IndexDoc (IndexDocReq) returns (IndexDocRsp) {
         option (google.api.http) = {
@@ -24,6 +28,23 @@ service Proxy {
             body: "*"
         };
     }
+}
+
+message InfoReq {
+}
+
+message InfoRsp {
+    message Shard {
+        string ID = 1;
+        string node = 2;
+    }
+    message Table {
+        string namespace = 1;
+        uint32 shardNum = 2;
+        uint32 replicaFactor = 3;
+        repeated Shard shards = 4;
+    }
+    map<string, Table> tables = 1;
 }
 
 message IndexDocReq {

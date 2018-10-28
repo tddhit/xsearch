@@ -2,22 +2,26 @@ package proxy
 
 import (
 	"sync"
+
+	"github.com/gogo/protobuf/jsonpb"
+
+	"github.com/tddhit/xsearch/proxy/pb"
 )
 
-type resource struct {
+type Resource struct {
 	sync.RWMutex
 	nodes  map[string]*node
 	tables map[string]*shardTable
 }
 
-func newResource() *resource {
-	return &resource{
+func NewResource() *Resource {
+	return &Resource{
 		nodes:  make(map[string]*node),
 		tables: make(map[string]*shardTable),
 	}
 }
 
-func (r *resource) getOrCreateNode(addr string) (*node, error) {
+func (r *Resource) getOrCreateNode(addr, status string) (*node, error) {
 	r.RLock()
 	if n, ok := r.nodes[addr]; ok {
 		r.RUnlock()
@@ -30,7 +34,7 @@ func (r *resource) getOrCreateNode(addr string) (*node, error) {
 		r.Unlock()
 		return n, nil
 	}
-	n, err := newNode(addr)
+	n, err := newNode(addr, status)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +44,7 @@ func (r *resource) getOrCreateNode(addr string) (*node, error) {
 	return n, nil
 }
 
-func (r *resource) getTable(namespace string) (*shardTable, bool) {
+func (r *Resource) getTable(namespace string) (*shardTable, bool) {
 	r.RLock()
 	defer r.RUnlock()
 
@@ -48,7 +52,7 @@ func (r *resource) getTable(namespace string) (*shardTable, bool) {
 	return table, ok
 }
 
-func (r *resource) updateTable(
+func (r *Resource) updateTable(
 	namespace string,
 	shardNum int,
 	replicaFactor int) *shardTable {
@@ -59,4 +63,39 @@ func (r *resource) updateTable(
 	t := newTable(namespace, shardNum, replicaFactor)
 	r.tables[namespace] = t
 	return t
+}
+
+func (r *Resource) marshalTo(rsp *proxypb.InfoRsp) string {
+	r.RLock()
+	defer r.RUnlock()
+
+	rsp.Tables = make(map[string]*proxypb.InfoRsp_Table)
+	for _, t := range r.tables {
+		var (
+			shards []*proxypb.InfoRsp_Shard
+		)
+		for _, group := range t.groups {
+			for _, replica := range group.replicas {
+				shards = append(shards, &proxypb.InfoRsp_Shard{
+					ID:   replica.id,
+					Node: replica.node.addr + ":" + replica.node.status,
+				})
+			}
+		}
+		rsp.Tables[t.namespace] = &proxypb.InfoRsp_Table{
+			Namespace:     t.namespace,
+			ShardNum:      uint32(t.shardNum),
+			ReplicaFactor: uint32(t.replicaFactor),
+			Shards:        shards,
+		}
+	}
+	marshaler := &jsonpb.Marshaler{
+		EnumsAsInts: true,
+		Indent:      "    ",
+	}
+	if s, err := marshaler.MarshalToString(rsp); err != nil {
+		return err.Error()
+	} else {
+		return s
+	}
 }

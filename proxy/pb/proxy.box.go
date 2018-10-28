@@ -17,15 +17,7 @@ import (
 )
 
 import (
-	runtime "github.com/grpc-ecosystem/grpc-gateway/runtime"
-	tr1 "github.com/tddhit/box/transport"
-	trhttp "github.com/tddhit/box/transport/http"
-	tropt1 "github.com/tddhit/box/transport/option"
 	context1 "golang.org/x/net/context"
-)
-
-import (
-	context2 "golang.org/x/net/context"
 	grpc1 "google.golang.org/grpc"
 )
 
@@ -40,6 +32,182 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
+type InfoReq struct {
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *InfoReq) Reset()         { *m = InfoReq{} }
+func (m *InfoReq) String() string { return proto.CompactTextString(m) }
+func (*InfoReq) ProtoMessage()    {}
+func (*InfoReq) Descriptor() ([]byte, []int) {
+	return fileDescriptor_proxy_ad2cc03e0f576068, []int{0}
+}
+func (m *InfoReq) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_InfoReq.Unmarshal(m, b)
+}
+func (m *InfoReq) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_InfoReq.Marshal(b, m, deterministic)
+}
+func (dst *InfoReq) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_InfoReq.Merge(dst, src)
+}
+func (m *InfoReq) XXX_Size() int {
+	return xxx_messageInfo_InfoReq.Size(m)
+}
+func (m *InfoReq) XXX_DiscardUnknown() {
+	xxx_messageInfo_InfoReq.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_InfoReq proto.InternalMessageInfo
+
+type InfoRsp struct {
+	Tables               map[string]*InfoRsp_Table `protobuf:"bytes,1,rep,name=tables,proto3" json:"tables,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	XXX_NoUnkeyedLiteral struct{}                  `json:"-"`
+	XXX_unrecognized     []byte                    `json:"-"`
+	XXX_sizecache        int32                     `json:"-"`
+}
+
+func (m *InfoRsp) Reset()         { *m = InfoRsp{} }
+func (m *InfoRsp) String() string { return proto.CompactTextString(m) }
+func (*InfoRsp) ProtoMessage()    {}
+func (*InfoRsp) Descriptor() ([]byte, []int) {
+	return fileDescriptor_proxy_ad2cc03e0f576068, []int{1}
+}
+func (m *InfoRsp) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_InfoRsp.Unmarshal(m, b)
+}
+func (m *InfoRsp) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_InfoRsp.Marshal(b, m, deterministic)
+}
+func (dst *InfoRsp) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_InfoRsp.Merge(dst, src)
+}
+func (m *InfoRsp) XXX_Size() int {
+	return xxx_messageInfo_InfoRsp.Size(m)
+}
+func (m *InfoRsp) XXX_DiscardUnknown() {
+	xxx_messageInfo_InfoRsp.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_InfoRsp proto.InternalMessageInfo
+
+func (m *InfoRsp) GetTables() map[string]*InfoRsp_Table {
+	if m != nil {
+		return m.Tables
+	}
+	return nil
+}
+
+type InfoRsp_Shard struct {
+	ID                   string   `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	Node                 string   `protobuf:"bytes,2,opt,name=node,proto3" json:"node,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *InfoRsp_Shard) Reset()         { *m = InfoRsp_Shard{} }
+func (m *InfoRsp_Shard) String() string { return proto.CompactTextString(m) }
+func (*InfoRsp_Shard) ProtoMessage()    {}
+func (*InfoRsp_Shard) Descriptor() ([]byte, []int) {
+	return fileDescriptor_proxy_ad2cc03e0f576068, []int{1, 0}
+}
+func (m *InfoRsp_Shard) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_InfoRsp_Shard.Unmarshal(m, b)
+}
+func (m *InfoRsp_Shard) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_InfoRsp_Shard.Marshal(b, m, deterministic)
+}
+func (dst *InfoRsp_Shard) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_InfoRsp_Shard.Merge(dst, src)
+}
+func (m *InfoRsp_Shard) XXX_Size() int {
+	return xxx_messageInfo_InfoRsp_Shard.Size(m)
+}
+func (m *InfoRsp_Shard) XXX_DiscardUnknown() {
+	xxx_messageInfo_InfoRsp_Shard.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_InfoRsp_Shard proto.InternalMessageInfo
+
+func (m *InfoRsp_Shard) GetID() string {
+	if m != nil {
+		return m.ID
+	}
+	return ""
+}
+
+func (m *InfoRsp_Shard) GetNode() string {
+	if m != nil {
+		return m.Node
+	}
+	return ""
+}
+
+type InfoRsp_Table struct {
+	Namespace            string           `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	ShardNum             uint32           `protobuf:"varint,2,opt,name=shardNum,proto3" json:"shardNum,omitempty"`
+	ReplicaFactor        uint32           `protobuf:"varint,3,opt,name=replicaFactor,proto3" json:"replicaFactor,omitempty"`
+	Shards               []*InfoRsp_Shard `protobuf:"bytes,4,rep,name=shards,proto3" json:"shards,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}         `json:"-"`
+	XXX_unrecognized     []byte           `json:"-"`
+	XXX_sizecache        int32            `json:"-"`
+}
+
+func (m *InfoRsp_Table) Reset()         { *m = InfoRsp_Table{} }
+func (m *InfoRsp_Table) String() string { return proto.CompactTextString(m) }
+func (*InfoRsp_Table) ProtoMessage()    {}
+func (*InfoRsp_Table) Descriptor() ([]byte, []int) {
+	return fileDescriptor_proxy_ad2cc03e0f576068, []int{1, 1}
+}
+func (m *InfoRsp_Table) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_InfoRsp_Table.Unmarshal(m, b)
+}
+func (m *InfoRsp_Table) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_InfoRsp_Table.Marshal(b, m, deterministic)
+}
+func (dst *InfoRsp_Table) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_InfoRsp_Table.Merge(dst, src)
+}
+func (m *InfoRsp_Table) XXX_Size() int {
+	return xxx_messageInfo_InfoRsp_Table.Size(m)
+}
+func (m *InfoRsp_Table) XXX_DiscardUnknown() {
+	xxx_messageInfo_InfoRsp_Table.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_InfoRsp_Table proto.InternalMessageInfo
+
+func (m *InfoRsp_Table) GetNamespace() string {
+	if m != nil {
+		return m.Namespace
+	}
+	return ""
+}
+
+func (m *InfoRsp_Table) GetShardNum() uint32 {
+	if m != nil {
+		return m.ShardNum
+	}
+	return 0
+}
+
+func (m *InfoRsp_Table) GetReplicaFactor() uint32 {
+	if m != nil {
+		return m.ReplicaFactor
+	}
+	return 0
+}
+
+func (m *InfoRsp_Table) GetShards() []*InfoRsp_Shard {
+	if m != nil {
+		return m.Shards
+	}
+	return nil
+}
+
 type IndexDocReq struct {
 	Namespace            string       `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
 	Doc                  *pb.Document `protobuf:"bytes,2,opt,name=doc,proto3" json:"doc,omitempty"`
@@ -52,7 +220,7 @@ func (m *IndexDocReq) Reset()         { *m = IndexDocReq{} }
 func (m *IndexDocReq) String() string { return proto.CompactTextString(m) }
 func (*IndexDocReq) ProtoMessage()    {}
 func (*IndexDocReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_proxy_0bf4a21753a221f5, []int{0}
+	return fileDescriptor_proxy_ad2cc03e0f576068, []int{2}
 }
 func (m *IndexDocReq) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_IndexDocReq.Unmarshal(m, b)
@@ -97,7 +265,7 @@ func (m *IndexDocRsp) Reset()         { *m = IndexDocRsp{} }
 func (m *IndexDocRsp) String() string { return proto.CompactTextString(m) }
 func (*IndexDocRsp) ProtoMessage()    {}
 func (*IndexDocRsp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_proxy_0bf4a21753a221f5, []int{1}
+	return fileDescriptor_proxy_ad2cc03e0f576068, []int{3}
 }
 func (m *IndexDocRsp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_IndexDocRsp.Unmarshal(m, b)
@@ -136,7 +304,7 @@ func (m *RemoveDocReq) Reset()         { *m = RemoveDocReq{} }
 func (m *RemoveDocReq) String() string { return proto.CompactTextString(m) }
 func (*RemoveDocReq) ProtoMessage()    {}
 func (*RemoveDocReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_proxy_0bf4a21753a221f5, []int{2}
+	return fileDescriptor_proxy_ad2cc03e0f576068, []int{4}
 }
 func (m *RemoveDocReq) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RemoveDocReq.Unmarshal(m, b)
@@ -180,7 +348,7 @@ func (m *RemoveDocRsp) Reset()         { *m = RemoveDocRsp{} }
 func (m *RemoveDocRsp) String() string { return proto.CompactTextString(m) }
 func (*RemoveDocRsp) ProtoMessage()    {}
 func (*RemoveDocRsp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_proxy_0bf4a21753a221f5, []int{3}
+	return fileDescriptor_proxy_ad2cc03e0f576068, []int{5}
 }
 func (m *RemoveDocRsp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RemoveDocRsp.Unmarshal(m, b)
@@ -214,7 +382,7 @@ func (m *SearchReq) Reset()         { *m = SearchReq{} }
 func (m *SearchReq) String() string { return proto.CompactTextString(m) }
 func (*SearchReq) ProtoMessage()    {}
 func (*SearchReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_proxy_0bf4a21753a221f5, []int{4}
+	return fileDescriptor_proxy_ad2cc03e0f576068, []int{6}
 }
 func (m *SearchReq) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SearchReq.Unmarshal(m, b)
@@ -273,7 +441,7 @@ func (m *SearchRsp) Reset()         { *m = SearchRsp{} }
 func (m *SearchRsp) String() string { return proto.CompactTextString(m) }
 func (*SearchRsp) ProtoMessage()    {}
 func (*SearchRsp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_proxy_0bf4a21753a221f5, []int{5}
+	return fileDescriptor_proxy_ad2cc03e0f576068, []int{7}
 }
 func (m *SearchRsp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SearchRsp.Unmarshal(m, b)
@@ -301,6 +469,11 @@ func (m *SearchRsp) GetDocs() []*pb.Document {
 }
 
 func init() {
+	proto.RegisterType((*InfoReq)(nil), "proxypb.InfoReq")
+	proto.RegisterType((*InfoRsp)(nil), "proxypb.InfoRsp")
+	proto.RegisterMapType((map[string]*InfoRsp_Table)(nil), "proxypb.InfoRsp.TablesEntry")
+	proto.RegisterType((*InfoRsp_Shard)(nil), "proxypb.InfoRsp.Shard")
+	proto.RegisterType((*InfoRsp_Table)(nil), "proxypb.InfoRsp.Table")
 	proto.RegisterType((*IndexDocReq)(nil), "proxypb.IndexDocReq")
 	proto.RegisterType((*IndexDocRsp)(nil), "proxypb.IndexDocRsp")
 	proto.RegisterType((*RemoveDocReq)(nil), "proxypb.RemoveDocReq")
@@ -313,6 +486,37 @@ func init() {
 var _ tr.Server
 var _ tr.ClientConn
 var _ tropt.CallOption
+
+type AdminGrpcClient interface {
+	Info(ctx context.Context, in *InfoReq, opts ...tropt.CallOption) (*InfoRsp, error)
+}
+
+type adminGrpcClient struct {
+	cc tr.ClientConn
+}
+
+func NewAdminGrpcClient(cc tr.ClientConn) AdminGrpcClient {
+	return &adminGrpcClient{cc}
+}
+
+func (c *adminGrpcClient) Info(ctx context.Context, in *InfoReq, opts ...tropt.CallOption) (*InfoRsp, error) {
+	out := new(InfoRsp)
+	err := c.cc.Invoke(ctx, "/proxypb.Admin/Info", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+type adminGrpcServiceDesc struct {
+	desc *grpc.ServiceDesc
+}
+
+func (d *adminGrpcServiceDesc) Desc() interface{} {
+	return d.desc
+}
+
+var AdminGrpcServiceDesc = &adminGrpcServiceDesc{&_Admin_serviceDesc}
 
 type ProxyGrpcClient interface {
 	IndexDoc(ctx context.Context, in *IndexDocReq, opts ...tropt.CallOption) (*IndexDocRsp, error)
@@ -365,90 +569,85 @@ func (d *proxyGrpcServiceDesc) Desc() interface{} {
 
 var ProxyGrpcServiceDesc = &proxyGrpcServiceDesc{&_Proxy_serviceDesc}
 
-type ProxyHttpClient interface {
-	IndexDoc(ctx context1.Context, in *IndexDocReq, opts ...tropt1.CallOption) (*IndexDocRsp, error)
-	RemoveDoc(ctx context1.Context, in *RemoveDocReq, opts ...tropt1.CallOption) (*RemoveDocRsp, error)
-	Search(ctx context1.Context, in *SearchReq, opts ...tropt1.CallOption) (*SearchRsp, error)
-}
-
-type proxyHttpClient struct {
-	cc tr1.ClientConn
-}
-
-func NewProxyHttpClient(cc tr1.ClientConn) ProxyHttpClient {
-	return &proxyHttpClient{cc}
-}
-
-func (c *proxyHttpClient) IndexDoc(ctx context1.Context, in *IndexDocReq, opts ...tropt1.CallOption) (*IndexDocRsp, error) {
-	out := new(IndexDocRsp)
-	pattern := _Proxy_Http_serviceDesc.Pattern["IndexDoc"]
-	err := c.cc.Invoke(ctx, pattern.String(), in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *proxyHttpClient) RemoveDoc(ctx context1.Context, in *RemoveDocReq, opts ...tropt1.CallOption) (*RemoveDocRsp, error) {
-	out := new(RemoveDocRsp)
-	pattern := _Proxy_Http_serviceDesc.Pattern["RemoveDoc"]
-	err := c.cc.Invoke(ctx, pattern.String(), in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *proxyHttpClient) Search(ctx context1.Context, in *SearchReq, opts ...tropt1.CallOption) (*SearchRsp, error) {
-	out := new(SearchRsp)
-	pattern := _Proxy_Http_serviceDesc.Pattern["Search"]
-	err := c.cc.Invoke(ctx, pattern.String(), in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-var _Proxy_Http_serviceDesc = trhttp.ServiceDesc{
-	ServiceDesc: &_Proxy_serviceDesc,
-	Pattern: map[string]runtime.Pattern{
-		"IndexDoc":  pattern_Proxy_IndexDoc,
-		"RemoveDoc": pattern_Proxy_RemoveDoc,
-		"Search":    pattern_Proxy_Search,
-	},
-}
-
-type proxyHttpServiceDesc struct {
-	desc *trhttp.ServiceDesc
-}
-
-func (d *proxyHttpServiceDesc) Desc() interface{} {
-	return d.desc
-}
-
-var ProxyHttpServiceDesc = &proxyHttpServiceDesc{&_Proxy_Http_serviceDesc}
-
-var (
-	pattern_Proxy_IndexDoc  = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0}, []string{"indexDoc"}, ""))
-	pattern_Proxy_RemoveDoc = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0}, []string{"removeDoc"}, ""))
-	pattern_Proxy_Search    = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0}, []string{"search"}, ""))
-)
-
 // Reference imports to suppress errors if they are not otherwise used.
-var _ context2.Context
+var _ context1.Context
 var _ grpc1.ClientConn
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc1.SupportPackageIsVersion4
 
+// AdminClient is the client API for Admin service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
+type AdminClient interface {
+	Info(ctx context1.Context, in *InfoReq, opts ...grpc1.CallOption) (*InfoRsp, error)
+}
+
+type adminClient struct {
+	cc *grpc1.ClientConn
+}
+
+func NewAdminClient(cc *grpc1.ClientConn) AdminClient {
+	return &adminClient{cc}
+}
+
+func (c *adminClient) Info(ctx context1.Context, in *InfoReq, opts ...grpc1.CallOption) (*InfoRsp, error) {
+	out := new(InfoRsp)
+	err := c.cc.Invoke(ctx, "/proxypb.Admin/Info", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// AdminServer is the server API for Admin service.
+type AdminServer interface {
+	Info(context1.Context, *InfoReq) (*InfoRsp, error)
+}
+
+func RegisterAdminServer(s *grpc1.Server, srv AdminServer) {
+	s.RegisterService(&_Admin_serviceDesc, srv)
+}
+
+func _Admin_Info_Handler(srv interface{}, ctx context1.Context, dec func(interface{}) error, interceptor grpc1.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InfoReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AdminServer).Info(ctx, in)
+	}
+	info := &grpc1.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proxypb.Admin/Info",
+	}
+	handler := func(ctx context1.Context, req interface{}) (interface{}, error) {
+		return srv.(AdminServer).Info(ctx, req.(*InfoReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+var _Admin_serviceDesc = grpc1.ServiceDesc{
+	ServiceName: "proxypb.Admin",
+	HandlerType: (*AdminServer)(nil),
+	Methods: []grpc1.MethodDesc{
+		{
+			MethodName: "Info",
+			Handler:    _Admin_Info_Handler,
+		},
+	},
+	Streams:  []grpc1.StreamDesc{},
+	Metadata: "proxy.proto",
+}
+
 // ProxyClient is the client API for Proxy service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type ProxyClient interface {
-	IndexDoc(ctx context2.Context, in *IndexDocReq, opts ...grpc1.CallOption) (*IndexDocRsp, error)
-	RemoveDoc(ctx context2.Context, in *RemoveDocReq, opts ...grpc1.CallOption) (*RemoveDocRsp, error)
-	Search(ctx context2.Context, in *SearchReq, opts ...grpc1.CallOption) (*SearchRsp, error)
+	IndexDoc(ctx context1.Context, in *IndexDocReq, opts ...grpc1.CallOption) (*IndexDocRsp, error)
+	RemoveDoc(ctx context1.Context, in *RemoveDocReq, opts ...grpc1.CallOption) (*RemoveDocRsp, error)
+	Search(ctx context1.Context, in *SearchReq, opts ...grpc1.CallOption) (*SearchRsp, error)
 }
 
 type proxyClient struct {
@@ -459,7 +658,7 @@ func NewProxyClient(cc *grpc1.ClientConn) ProxyClient {
 	return &proxyClient{cc}
 }
 
-func (c *proxyClient) IndexDoc(ctx context2.Context, in *IndexDocReq, opts ...grpc1.CallOption) (*IndexDocRsp, error) {
+func (c *proxyClient) IndexDoc(ctx context1.Context, in *IndexDocReq, opts ...grpc1.CallOption) (*IndexDocRsp, error) {
 	out := new(IndexDocRsp)
 	err := c.cc.Invoke(ctx, "/proxypb.Proxy/IndexDoc", in, out, opts...)
 	if err != nil {
@@ -468,7 +667,7 @@ func (c *proxyClient) IndexDoc(ctx context2.Context, in *IndexDocReq, opts ...gr
 	return out, nil
 }
 
-func (c *proxyClient) RemoveDoc(ctx context2.Context, in *RemoveDocReq, opts ...grpc1.CallOption) (*RemoveDocRsp, error) {
+func (c *proxyClient) RemoveDoc(ctx context1.Context, in *RemoveDocReq, opts ...grpc1.CallOption) (*RemoveDocRsp, error) {
 	out := new(RemoveDocRsp)
 	err := c.cc.Invoke(ctx, "/proxypb.Proxy/RemoveDoc", in, out, opts...)
 	if err != nil {
@@ -477,7 +676,7 @@ func (c *proxyClient) RemoveDoc(ctx context2.Context, in *RemoveDocReq, opts ...
 	return out, nil
 }
 
-func (c *proxyClient) Search(ctx context2.Context, in *SearchReq, opts ...grpc1.CallOption) (*SearchRsp, error) {
+func (c *proxyClient) Search(ctx context1.Context, in *SearchReq, opts ...grpc1.CallOption) (*SearchRsp, error) {
 	out := new(SearchRsp)
 	err := c.cc.Invoke(ctx, "/proxypb.Proxy/Search", in, out, opts...)
 	if err != nil {
@@ -488,16 +687,16 @@ func (c *proxyClient) Search(ctx context2.Context, in *SearchReq, opts ...grpc1.
 
 // ProxyServer is the server API for Proxy service.
 type ProxyServer interface {
-	IndexDoc(context2.Context, *IndexDocReq) (*IndexDocRsp, error)
-	RemoveDoc(context2.Context, *RemoveDocReq) (*RemoveDocRsp, error)
-	Search(context2.Context, *SearchReq) (*SearchRsp, error)
+	IndexDoc(context1.Context, *IndexDocReq) (*IndexDocRsp, error)
+	RemoveDoc(context1.Context, *RemoveDocReq) (*RemoveDocRsp, error)
+	Search(context1.Context, *SearchReq) (*SearchRsp, error)
 }
 
 func RegisterProxyServer(s *grpc1.Server, srv ProxyServer) {
 	s.RegisterService(&_Proxy_serviceDesc, srv)
 }
 
-func _Proxy_IndexDoc_Handler(srv interface{}, ctx context2.Context, dec func(interface{}) error, interceptor grpc1.UnaryServerInterceptor) (interface{}, error) {
+func _Proxy_IndexDoc_Handler(srv interface{}, ctx context1.Context, dec func(interface{}) error, interceptor grpc1.UnaryServerInterceptor) (interface{}, error) {
 	in := new(IndexDocReq)
 	if err := dec(in); err != nil {
 		return nil, err
@@ -509,13 +708,13 @@ func _Proxy_IndexDoc_Handler(srv interface{}, ctx context2.Context, dec func(int
 		Server:     srv,
 		FullMethod: "/proxypb.Proxy/IndexDoc",
 	}
-	handler := func(ctx context2.Context, req interface{}) (interface{}, error) {
+	handler := func(ctx context1.Context, req interface{}) (interface{}, error) {
 		return srv.(ProxyServer).IndexDoc(ctx, req.(*IndexDocReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Proxy_RemoveDoc_Handler(srv interface{}, ctx context2.Context, dec func(interface{}) error, interceptor grpc1.UnaryServerInterceptor) (interface{}, error) {
+func _Proxy_RemoveDoc_Handler(srv interface{}, ctx context1.Context, dec func(interface{}) error, interceptor grpc1.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RemoveDocReq)
 	if err := dec(in); err != nil {
 		return nil, err
@@ -527,13 +726,13 @@ func _Proxy_RemoveDoc_Handler(srv interface{}, ctx context2.Context, dec func(in
 		Server:     srv,
 		FullMethod: "/proxypb.Proxy/RemoveDoc",
 	}
-	handler := func(ctx context2.Context, req interface{}) (interface{}, error) {
+	handler := func(ctx context1.Context, req interface{}) (interface{}, error) {
 		return srv.(ProxyServer).RemoveDoc(ctx, req.(*RemoveDocReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Proxy_Search_Handler(srv interface{}, ctx context2.Context, dec func(interface{}) error, interceptor grpc1.UnaryServerInterceptor) (interface{}, error) {
+func _Proxy_Search_Handler(srv interface{}, ctx context1.Context, dec func(interface{}) error, interceptor grpc1.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SearchReq)
 	if err := dec(in); err != nil {
 		return nil, err
@@ -545,7 +744,7 @@ func _Proxy_Search_Handler(srv interface{}, ctx context2.Context, dec func(inter
 		Server:     srv,
 		FullMethod: "/proxypb.Proxy/Search",
 	}
-	handler := func(ctx context2.Context, req interface{}) (interface{}, error) {
+	handler := func(ctx context1.Context, req interface{}) (interface{}, error) {
 		return srv.(ProxyServer).Search(ctx, req.(*SearchReq))
 	}
 	return interceptor(ctx, in, info, handler)
@@ -572,32 +771,43 @@ var _Proxy_serviceDesc = grpc1.ServiceDesc{
 	Metadata: "proxy.proto",
 }
 
-func init() { proto.RegisterFile("proxy.proto", fileDescriptor_proxy_0bf4a21753a221f5) }
+func init() { proto.RegisterFile("proxy.proto", fileDescriptor_proxy_ad2cc03e0f576068) }
 
-var fileDescriptor_proxy_0bf4a21753a221f5 = []byte{
-	// 371 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x92, 0x3f, 0x4e, 0xc3, 0x30,
-	0x14, 0xc6, 0xe5, 0xfe, 0x25, 0x6e, 0x29, 0xc8, 0xb4, 0x52, 0x14, 0x75, 0x88, 0x8c, 0x80, 0x88,
-	0x21, 0x91, 0x0a, 0x13, 0x23, 0xca, 0x52, 0x89, 0xa1, 0x98, 0x13, 0x24, 0x8e, 0x55, 0x2a, 0xd1,
-	0x3c, 0x37, 0x4e, 0x51, 0x3b, 0xb0, 0x70, 0x05, 0x8e, 0xc6, 0x15, 0x58, 0xb9, 0x03, 0x4a, 0x9c,
-	0x9a, 0x48, 0x14, 0xc1, 0x96, 0xef, 0x7b, 0xf6, 0xef, 0xe5, 0x7d, 0xcf, 0xb8, 0x27, 0x33, 0xd8,
-	0x6c, 0x7d, 0x99, 0x41, 0x0e, 0xa4, 0x5b, 0x0a, 0x19, 0x3b, 0xe3, 0x39, 0xc0, 0xfc, 0x49, 0x04,
-	0x91, 0x5c, 0x04, 0x51, 0x9a, 0x42, 0x1e, 0xe5, 0x0b, 0x48, 0x95, 0x3e, 0xe6, 0xd8, 0x1b, 0x25,
-	0xa2, 0x8c, 0x3f, 0x06, 0x32, 0x0e, 0xaa, 0x4f, 0x5d, 0xa1, 0x0c, 0xf7, 0xa6, 0x69, 0x22, 0x36,
-	0x21, 0x70, 0x26, 0x56, 0x64, 0x8c, 0xad, 0x34, 0x5a, 0x0a, 0x25, 0x23, 0x2e, 0x6c, 0xe4, 0x22,
-	0xcf, 0x62, 0xdf, 0x06, 0x39, 0xc3, 0xcd, 0x04, 0xb8, 0xdd, 0x70, 0x91, 0xd7, 0x9b, 0x9c, 0xf8,
-	0x15, 0x49, 0xc6, 0x7e, 0x08, 0x7c, 0xbd, 0x14, 0x69, 0xce, 0x8a, 0x3a, 0x3d, 0xad, 0x31, 0x95,
-	0x24, 0x43, 0xdc, 0x4e, 0x80, 0x4f, 0xc3, 0x8a, 0xa7, 0x05, 0xbd, 0xc5, 0x7d, 0x26, 0x96, 0xf0,
-	0x2c, 0xfe, 0xd5, 0xd9, 0x30, 0x1a, 0x75, 0xc6, 0xa0, 0xce, 0x50, 0x92, 0xbe, 0x60, 0xeb, 0xa1,
-	0xfc, 0xa5, 0xbf, 0x81, 0xe7, 0xb8, 0xbd, 0x5a, 0x8b, 0x6c, 0x5b, 0x0d, 0x73, 0x5c, 0x1b, 0xe6,
-	0xbe, 0xf0, 0x99, 0x2e, 0x17, 0x8d, 0x55, 0x1e, 0x65, 0xb9, 0xdd, 0x74, 0x91, 0xd7, 0x62, 0x5a,
-	0x14, 0x2e, 0x87, 0x75, 0x9a, 0xdb, 0x2d, 0x17, 0x79, 0x87, 0x4c, 0x0b, 0x7a, 0x6d, 0xda, 0x2b,
-	0x49, 0x2e, 0x70, 0x2b, 0x01, 0xae, 0x6c, 0xe4, 0x36, 0x7f, 0x0b, 0xab, 0x3c, 0x30, 0xf9, 0x44,
-	0xb8, 0x3d, 0x2b, 0xb6, 0x48, 0xee, 0xf0, 0xc1, 0x2e, 0x37, 0x32, 0xf4, 0xab, 0xcd, 0xfa, 0xb5,
-	0xf5, 0x38, 0x7b, 0x5c, 0x25, 0xe9, 0xf0, 0xf5, 0xfd, 0xe3, 0xad, 0x31, 0xb8, 0x41, 0x97, 0xd4,
-	0x0a, 0x16, 0x3b, 0xc2, 0x0c, 0x5b, 0x26, 0x1c, 0x32, 0x32, 0x17, 0xeb, 0xa1, 0x3b, 0xfb, 0x6c,
-	0x25, 0xe9, 0xa8, 0x04, 0x1e, 0x15, 0x40, 0x1c, 0x64, 0x06, 0x12, 0xe2, 0x8e, 0x9e, 0x8f, 0x10,
-	0x73, 0xcf, 0xe4, 0xed, 0xfc, 0xf0, 0x94, 0xa4, 0xa4, 0x04, 0xf5, 0x0b, 0x50, 0x37, 0xd0, 0x01,
-	0xc4, 0x9d, 0xf2, 0xe1, 0x5d, 0x7d, 0x05, 0x00, 0x00, 0xff, 0xff, 0x02, 0x1d, 0xa7, 0x76, 0xc8,
-	0x02, 0x00, 0x00,
+var fileDescriptor_proxy_ad2cc03e0f576068 = []byte{
+	// 550 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x54, 0xcd, 0x6e, 0xd3, 0x40,
+	0x10, 0xc6, 0x8e, 0x9d, 0xd6, 0x93, 0xb6, 0x44, 0x43, 0x8b, 0x2c, 0x2b, 0x87, 0x6a, 0xf9, 0xab,
+	0x4a, 0x65, 0x4b, 0xa1, 0x48, 0x28, 0x37, 0x50, 0x40, 0x8a, 0x84, 0x50, 0xbb, 0xe5, 0x05, 0x36,
+	0xf6, 0xd2, 0x46, 0x24, 0xbb, 0x1b, 0xaf, 0x53, 0x25, 0x07, 0x2e, 0xbc, 0x02, 0x07, 0x1e, 0x8c,
+	0x13, 0x77, 0xae, 0xbc, 0x03, 0xf2, 0x7a, 0x63, 0x5c, 0x1a, 0xa9, 0xdc, 0x66, 0xbe, 0xf9, 0xe6,
+	0x9b, 0x9d, 0xf9, 0x2c, 0x43, 0x47, 0xe5, 0x72, 0xb9, 0x8a, 0x55, 0x2e, 0x0b, 0x89, 0x5b, 0x26,
+	0x51, 0xe3, 0xa8, 0x77, 0x29, 0xe5, 0xe5, 0x94, 0x27, 0x4c, 0x4d, 0x12, 0x26, 0x84, 0x2c, 0x58,
+	0x31, 0x91, 0x42, 0x57, 0xb4, 0x28, 0x5c, 0x6a, 0xce, 0xf2, 0xf4, 0x2a, 0x51, 0xe3, 0xc4, 0x86,
+	0x55, 0x85, 0x04, 0xb0, 0x35, 0x12, 0x9f, 0x24, 0xe5, 0x73, 0xf2, 0xd3, 0xb5, 0xb1, 0x56, 0x78,
+	0x0a, 0xed, 0x82, 0x8d, 0xa7, 0x5c, 0x87, 0xce, 0x61, 0xeb, 0xa8, 0xd3, 0xef, 0xc5, 0x76, 0x50,
+	0x6c, 0x19, 0xf1, 0x47, 0x53, 0x7e, 0x2b, 0x8a, 0x7c, 0x45, 0x2d, 0x37, 0x7a, 0x0e, 0xfe, 0xc5,
+	0x15, 0xcb, 0x33, 0xdc, 0x03, 0x77, 0x34, 0x0c, 0x9d, 0x43, 0xe7, 0x28, 0xa0, 0xee, 0x68, 0x88,
+	0x08, 0x9e, 0x90, 0x19, 0x0f, 0x5d, 0x83, 0x98, 0x38, 0xfa, 0xee, 0x80, 0x6f, 0x44, 0xb0, 0x07,
+	0x81, 0x60, 0x33, 0xae, 0x15, 0x4b, 0xb9, 0x6d, 0xfa, 0x0b, 0x60, 0x04, 0xdb, 0xba, 0x14, 0xfd,
+	0xb0, 0x98, 0x99, 0xfe, 0x5d, 0x5a, 0xe7, 0xf8, 0x18, 0x76, 0x73, 0xae, 0xa6, 0x93, 0x94, 0xbd,
+	0x63, 0x69, 0x21, 0xf3, 0xb0, 0x65, 0x08, 0x37, 0x41, 0x8c, 0xa1, 0x6d, 0x3a, 0x74, 0xe8, 0x99,
+	0x65, 0x1e, 0xde, 0x5a, 0xc6, 0xbc, 0x9a, 0x5a, 0x56, 0x74, 0x0e, 0x9d, 0xc6, 0x76, 0xd8, 0x85,
+	0xd6, 0x67, 0xbe, 0xb2, 0x0f, 0x2b, 0x43, 0x3c, 0x01, 0xff, 0x9a, 0x4d, 0x17, 0xd5, 0x3e, 0x9b,
+	0xf4, 0x4c, 0x3b, 0xad, 0x48, 0x03, 0xf7, 0x95, 0x43, 0x28, 0x74, 0x46, 0x22, 0xe3, 0xcb, 0xa1,
+	0x4c, 0x29, 0x9f, 0xdf, 0xb1, 0xf1, 0x13, 0x68, 0x65, 0x32, 0xb5, 0xe2, 0x0f, 0x62, 0x6b, 0x98,
+	0x1a, 0xc7, 0x43, 0x99, 0x2e, 0x66, 0x5c, 0x14, 0xb4, 0xac, 0x93, 0x47, 0x0d, 0x4d, 0xad, 0x70,
+	0x1f, 0xfc, 0x4c, 0xa6, 0xf5, 0xd9, 0xab, 0x84, 0xbc, 0x81, 0x1d, 0xca, 0x67, 0xf2, 0x9a, 0xff,
+	0xd7, 0xe4, 0x5a, 0xc3, 0x6d, 0x6a, 0xec, 0x35, 0x35, 0xb4, 0x22, 0x5f, 0x20, 0xb8, 0x30, 0x4f,
+	0xba, 0x5b, 0xf0, 0x29, 0xf8, 0xf3, 0x05, 0xcf, 0x57, 0x76, 0x99, 0x6e, 0x63, 0x99, 0xf3, 0x12,
+	0xa7, 0x55, 0xb9, 0x1c, 0xac, 0x0b, 0x96, 0x17, 0xc6, 0x40, 0x8f, 0x56, 0x49, 0x89, 0xa6, 0x72,
+	0x21, 0x8a, 0xd0, 0x33, 0xb6, 0x56, 0x09, 0x39, 0xad, 0xc7, 0x6b, 0x85, 0xcf, 0xc0, 0xcb, 0x64,
+	0xba, 0xfe, 0x4c, 0x37, 0x1e, 0xcb, 0x10, 0xfa, 0x2f, 0xc1, 0x7f, 0x9d, 0xcd, 0x26, 0x02, 0x4f,
+	0xc0, 0x2b, 0x6d, 0xc2, 0xee, 0x4d, 0xd7, 0xf8, 0x3c, 0xea, 0xfe, 0xeb, 0x23, 0xb9, 0xd7, 0xff,
+	0xed, 0x80, 0x7f, 0x56, 0xa2, 0xf8, 0x1e, 0xb6, 0xd7, 0xe7, 0xc6, 0xfd, 0x06, 0xb3, 0x76, 0x35,
+	0xda, 0x80, 0x6a, 0x45, 0xf6, 0xbf, 0xfe, 0xf8, 0xf5, 0xcd, 0xdd, 0x23, 0x41, 0x32, 0xb1, 0xe8,
+	0xc0, 0x39, 0xc6, 0x33, 0x08, 0xea, 0x9b, 0xe2, 0x41, 0xdd, 0xd8, 0xf4, 0x2a, 0xda, 0x04, 0x6b,
+	0x45, 0x0e, 0x8c, 0xe0, 0x7d, 0x02, 0x49, 0xbe, 0x86, 0x4b, 0xc5, 0x21, 0xb4, 0xab, 0xb3, 0x20,
+	0xd6, 0x7d, 0xb5, 0x4d, 0xd1, 0x2d, 0x4c, 0x2b, 0x82, 0x46, 0x68, 0x87, 0x6c, 0x25, 0xd5, 0xd1,
+	0x06, 0xce, 0xf1, 0xb8, 0x6d, 0x7e, 0x0b, 0x2f, 0xfe, 0x04, 0x00, 0x00, 0xff, 0xff, 0x8c, 0xab,
+	0x6e, 0x36, 0x66, 0x04, 0x00, 0x00,
 }

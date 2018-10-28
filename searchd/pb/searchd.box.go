@@ -51,144 +51,76 @@ func (x Command_Type) String() string {
 	return proto.EnumName(Command_Type_name, int32(x))
 }
 func (Command_Type) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_searchd_7e33600c41f609fc, []int{10, 0}
+	return fileDescriptor_searchd_4d6dc1d03718a0db, []int{8, 0}
 }
 
-type CreateShardReq struct {
-	ShardID              string   `protobuf:"bytes,1,opt,name=shardID,proto3" json:"shardID,omitempty"`
+type InfoReq struct {
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *CreateShardReq) Reset()         { *m = CreateShardReq{} }
-func (m *CreateShardReq) String() string { return proto.CompactTextString(m) }
-func (*CreateShardReq) ProtoMessage()    {}
-func (*CreateShardReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_searchd_7e33600c41f609fc, []int{0}
+func (m *InfoReq) Reset()         { *m = InfoReq{} }
+func (m *InfoReq) String() string { return proto.CompactTextString(m) }
+func (*InfoReq) ProtoMessage()    {}
+func (*InfoReq) Descriptor() ([]byte, []int) {
+	return fileDescriptor_searchd_4d6dc1d03718a0db, []int{0}
 }
-func (m *CreateShardReq) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_CreateShardReq.Unmarshal(m, b)
+func (m *InfoReq) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_InfoReq.Unmarshal(m, b)
 }
-func (m *CreateShardReq) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_CreateShardReq.Marshal(b, m, deterministic)
+func (m *InfoReq) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_InfoReq.Marshal(b, m, deterministic)
 }
-func (dst *CreateShardReq) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_CreateShardReq.Merge(dst, src)
+func (dst *InfoReq) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_InfoReq.Merge(dst, src)
 }
-func (m *CreateShardReq) XXX_Size() int {
-	return xxx_messageInfo_CreateShardReq.Size(m)
+func (m *InfoReq) XXX_Size() int {
+	return xxx_messageInfo_InfoReq.Size(m)
 }
-func (m *CreateShardReq) XXX_DiscardUnknown() {
-	xxx_messageInfo_CreateShardReq.DiscardUnknown(m)
+func (m *InfoReq) XXX_DiscardUnknown() {
+	xxx_messageInfo_InfoReq.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_CreateShardReq proto.InternalMessageInfo
+var xxx_messageInfo_InfoReq proto.InternalMessageInfo
 
-func (m *CreateShardReq) GetShardID() string {
+type InfoRsp struct {
+	Shards               []string `protobuf:"bytes,1,rep,name=shards,proto3" json:"shards,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *InfoRsp) Reset()         { *m = InfoRsp{} }
+func (m *InfoRsp) String() string { return proto.CompactTextString(m) }
+func (*InfoRsp) ProtoMessage()    {}
+func (*InfoRsp) Descriptor() ([]byte, []int) {
+	return fileDescriptor_searchd_4d6dc1d03718a0db, []int{1}
+}
+func (m *InfoRsp) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_InfoRsp.Unmarshal(m, b)
+}
+func (m *InfoRsp) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_InfoRsp.Marshal(b, m, deterministic)
+}
+func (dst *InfoRsp) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_InfoRsp.Merge(dst, src)
+}
+func (m *InfoRsp) XXX_Size() int {
+	return xxx_messageInfo_InfoRsp.Size(m)
+}
+func (m *InfoRsp) XXX_DiscardUnknown() {
+	xxx_messageInfo_InfoRsp.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_InfoRsp proto.InternalMessageInfo
+
+func (m *InfoRsp) GetShards() []string {
 	if m != nil {
-		return m.ShardID
+		return m.Shards
 	}
-	return ""
+	return nil
 }
-
-type CreateShardRsp struct {
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *CreateShardRsp) Reset()         { *m = CreateShardRsp{} }
-func (m *CreateShardRsp) String() string { return proto.CompactTextString(m) }
-func (*CreateShardRsp) ProtoMessage()    {}
-func (*CreateShardRsp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_searchd_7e33600c41f609fc, []int{1}
-}
-func (m *CreateShardRsp) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_CreateShardRsp.Unmarshal(m, b)
-}
-func (m *CreateShardRsp) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_CreateShardRsp.Marshal(b, m, deterministic)
-}
-func (dst *CreateShardRsp) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_CreateShardRsp.Merge(dst, src)
-}
-func (m *CreateShardRsp) XXX_Size() int {
-	return xxx_messageInfo_CreateShardRsp.Size(m)
-}
-func (m *CreateShardRsp) XXX_DiscardUnknown() {
-	xxx_messageInfo_CreateShardRsp.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_CreateShardRsp proto.InternalMessageInfo
-
-type RemoveShardReq struct {
-	ShardID              string   `protobuf:"bytes,1,opt,name=shardID,proto3" json:"shardID,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *RemoveShardReq) Reset()         { *m = RemoveShardReq{} }
-func (m *RemoveShardReq) String() string { return proto.CompactTextString(m) }
-func (*RemoveShardReq) ProtoMessage()    {}
-func (*RemoveShardReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_searchd_7e33600c41f609fc, []int{2}
-}
-func (m *RemoveShardReq) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_RemoveShardReq.Unmarshal(m, b)
-}
-func (m *RemoveShardReq) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_RemoveShardReq.Marshal(b, m, deterministic)
-}
-func (dst *RemoveShardReq) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RemoveShardReq.Merge(dst, src)
-}
-func (m *RemoveShardReq) XXX_Size() int {
-	return xxx_messageInfo_RemoveShardReq.Size(m)
-}
-func (m *RemoveShardReq) XXX_DiscardUnknown() {
-	xxx_messageInfo_RemoveShardReq.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_RemoveShardReq proto.InternalMessageInfo
-
-func (m *RemoveShardReq) GetShardID() string {
-	if m != nil {
-		return m.ShardID
-	}
-	return ""
-}
-
-type RemoveShardRsp struct {
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *RemoveShardRsp) Reset()         { *m = RemoveShardRsp{} }
-func (m *RemoveShardRsp) String() string { return proto.CompactTextString(m) }
-func (*RemoveShardRsp) ProtoMessage()    {}
-func (*RemoveShardRsp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_searchd_7e33600c41f609fc, []int{3}
-}
-func (m *RemoveShardRsp) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_RemoveShardRsp.Unmarshal(m, b)
-}
-func (m *RemoveShardRsp) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_RemoveShardRsp.Marshal(b, m, deterministic)
-}
-func (dst *RemoveShardRsp) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RemoveShardRsp.Merge(dst, src)
-}
-func (m *RemoveShardRsp) XXX_Size() int {
-	return xxx_messageInfo_RemoveShardRsp.Size(m)
-}
-func (m *RemoveShardRsp) XXX_DiscardUnknown() {
-	xxx_messageInfo_RemoveShardRsp.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_RemoveShardRsp proto.InternalMessageInfo
 
 type IndexDocReq struct {
 	ShardID              string       `protobuf:"bytes,1,opt,name=shardID,proto3" json:"shardID,omitempty"`
@@ -202,7 +134,7 @@ func (m *IndexDocReq) Reset()         { *m = IndexDocReq{} }
 func (m *IndexDocReq) String() string { return proto.CompactTextString(m) }
 func (*IndexDocReq) ProtoMessage()    {}
 func (*IndexDocReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_searchd_7e33600c41f609fc, []int{4}
+	return fileDescriptor_searchd_4d6dc1d03718a0db, []int{2}
 }
 func (m *IndexDocReq) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_IndexDocReq.Unmarshal(m, b)
@@ -246,7 +178,7 @@ func (m *IndexDocRsp) Reset()         { *m = IndexDocRsp{} }
 func (m *IndexDocRsp) String() string { return proto.CompactTextString(m) }
 func (*IndexDocRsp) ProtoMessage()    {}
 func (*IndexDocRsp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_searchd_7e33600c41f609fc, []int{5}
+	return fileDescriptor_searchd_4d6dc1d03718a0db, []int{3}
 }
 func (m *IndexDocRsp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_IndexDocRsp.Unmarshal(m, b)
@@ -278,7 +210,7 @@ func (m *RemoveDocReq) Reset()         { *m = RemoveDocReq{} }
 func (m *RemoveDocReq) String() string { return proto.CompactTextString(m) }
 func (*RemoveDocReq) ProtoMessage()    {}
 func (*RemoveDocReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_searchd_7e33600c41f609fc, []int{6}
+	return fileDescriptor_searchd_4d6dc1d03718a0db, []int{4}
 }
 func (m *RemoveDocReq) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RemoveDocReq.Unmarshal(m, b)
@@ -322,7 +254,7 @@ func (m *RemoveDocRsp) Reset()         { *m = RemoveDocRsp{} }
 func (m *RemoveDocRsp) String() string { return proto.CompactTextString(m) }
 func (*RemoveDocRsp) ProtoMessage()    {}
 func (*RemoveDocRsp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_searchd_7e33600c41f609fc, []int{7}
+	return fileDescriptor_searchd_4d6dc1d03718a0db, []int{5}
 }
 func (m *RemoveDocRsp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_RemoveDocRsp.Unmarshal(m, b)
@@ -356,7 +288,7 @@ func (m *SearchReq) Reset()         { *m = SearchReq{} }
 func (m *SearchReq) String() string { return proto.CompactTextString(m) }
 func (*SearchReq) ProtoMessage()    {}
 func (*SearchReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_searchd_7e33600c41f609fc, []int{8}
+	return fileDescriptor_searchd_4d6dc1d03718a0db, []int{6}
 }
 func (m *SearchReq) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SearchReq.Unmarshal(m, b)
@@ -415,7 +347,7 @@ func (m *SearchRsp) Reset()         { *m = SearchRsp{} }
 func (m *SearchRsp) String() string { return proto.CompactTextString(m) }
 func (*SearchRsp) ProtoMessage()    {}
 func (*SearchRsp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_searchd_7e33600c41f609fc, []int{9}
+	return fileDescriptor_searchd_4d6dc1d03718a0db, []int{7}
 }
 func (m *SearchRsp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SearchRsp.Unmarshal(m, b)
@@ -457,7 +389,7 @@ func (m *Command) Reset()         { *m = Command{} }
 func (m *Command) String() string { return proto.CompactTextString(m) }
 func (*Command) ProtoMessage()    {}
 func (*Command) Descriptor() ([]byte, []int) {
-	return fileDescriptor_searchd_7e33600c41f609fc, []int{10}
+	return fileDescriptor_searchd_4d6dc1d03718a0db, []int{8}
 }
 func (m *Command) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_Command.Unmarshal(m, b)
@@ -482,10 +414,10 @@ type isCommand_DocOneof interface {
 }
 
 type Command_Doc struct {
-	Doc *pb.Document `protobuf:"bytes,3,opt,name=doc,proto3,oneof"`
+	Doc *pb.Document `protobuf:"bytes,2,opt,name=doc,proto3,oneof"`
 }
 type Command_DocID struct {
-	DocID string `protobuf:"bytes,4,opt,name=docID,proto3,oneof"`
+	DocID string `protobuf:"bytes,3,opt,name=docID,proto3,oneof"`
 }
 
 func (*Command_Doc) isCommand_DocOneof()   {}
@@ -532,12 +464,12 @@ func _Command_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
 	// doc_oneof
 	switch x := m.DocOneof.(type) {
 	case *Command_Doc:
-		b.EncodeVarint(3<<3 | proto.WireBytes)
+		b.EncodeVarint(2<<3 | proto.WireBytes)
 		if err := b.EncodeMessage(x.Doc); err != nil {
 			return err
 		}
 	case *Command_DocID:
-		b.EncodeVarint(4<<3 | proto.WireBytes)
+		b.EncodeVarint(3<<3 | proto.WireBytes)
 		b.EncodeStringBytes(x.DocID)
 	case nil:
 	default:
@@ -549,7 +481,7 @@ func _Command_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
 func _Command_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
 	m := msg.(*Command)
 	switch tag {
-	case 3: // doc_oneof.doc
+	case 2: // doc_oneof.doc
 		if wire != proto.WireBytes {
 			return true, proto.ErrInternalBadWireType
 		}
@@ -557,7 +489,7 @@ func _Command_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer
 		err := b.DecodeMessage(msg)
 		m.DocOneof = &Command_Doc{msg}
 		return true, err
-	case 4: // doc_oneof.docID
+	case 3: // doc_oneof.docID
 		if wire != proto.WireBytes {
 			return true, proto.ErrInternalBadWireType
 		}
@@ -590,10 +522,8 @@ func _Command_OneofSizer(msg proto.Message) (n int) {
 }
 
 func init() {
-	proto.RegisterType((*CreateShardReq)(nil), "searchdpb.CreateShardReq")
-	proto.RegisterType((*CreateShardRsp)(nil), "searchdpb.CreateShardRsp")
-	proto.RegisterType((*RemoveShardReq)(nil), "searchdpb.RemoveShardReq")
-	proto.RegisterType((*RemoveShardRsp)(nil), "searchdpb.RemoveShardRsp")
+	proto.RegisterType((*InfoReq)(nil), "searchdpb.InfoReq")
+	proto.RegisterType((*InfoRsp)(nil), "searchdpb.InfoRsp")
 	proto.RegisterType((*IndexDocReq)(nil), "searchdpb.IndexDocReq")
 	proto.RegisterType((*IndexDocRsp)(nil), "searchdpb.IndexDocRsp")
 	proto.RegisterType((*RemoveDocReq)(nil), "searchdpb.RemoveDocReq")
@@ -609,46 +539,36 @@ var _ tr.Server
 var _ tr.ClientConn
 var _ tropt.CallOption
 
-type SearchdAdminGrpcClient interface {
-	CreateShard(ctx context.Context, in *CreateShardReq, opts ...tropt.CallOption) (*CreateShardRsp, error)
-	RemoveShard(ctx context.Context, in *RemoveShardReq, opts ...tropt.CallOption) (*RemoveShardRsp, error)
+type AdminGrpcClient interface {
+	Info(ctx context.Context, in *InfoReq, opts ...tropt.CallOption) (*InfoRsp, error)
 }
 
-type searchdAdminGrpcClient struct {
+type adminGrpcClient struct {
 	cc tr.ClientConn
 }
 
-func NewSearchdAdminGrpcClient(cc tr.ClientConn) SearchdAdminGrpcClient {
-	return &searchdAdminGrpcClient{cc}
+func NewAdminGrpcClient(cc tr.ClientConn) AdminGrpcClient {
+	return &adminGrpcClient{cc}
 }
 
-func (c *searchdAdminGrpcClient) CreateShard(ctx context.Context, in *CreateShardReq, opts ...tropt.CallOption) (*CreateShardRsp, error) {
-	out := new(CreateShardRsp)
-	err := c.cc.Invoke(ctx, "/searchdpb.SearchdAdmin/CreateShard", in, out, opts...)
+func (c *adminGrpcClient) Info(ctx context.Context, in *InfoReq, opts ...tropt.CallOption) (*InfoRsp, error) {
+	out := new(InfoRsp)
+	err := c.cc.Invoke(ctx, "/searchdpb.Admin/Info", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *searchdAdminGrpcClient) RemoveShard(ctx context.Context, in *RemoveShardReq, opts ...tropt.CallOption) (*RemoveShardRsp, error) {
-	out := new(RemoveShardRsp)
-	err := c.cc.Invoke(ctx, "/searchdpb.SearchdAdmin/RemoveShard", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-type searchdAdminGrpcServiceDesc struct {
+type adminGrpcServiceDesc struct {
 	desc *grpc.ServiceDesc
 }
 
-func (d *searchdAdminGrpcServiceDesc) Desc() interface{} {
+func (d *adminGrpcServiceDesc) Desc() interface{} {
 	return d.desc
 }
 
-var SearchdAdminGrpcServiceDesc = &searchdAdminGrpcServiceDesc{&_SearchdAdmin_serviceDesc}
+var AdminGrpcServiceDesc = &adminGrpcServiceDesc{&_Admin_serviceDesc}
 
 type SearchdGrpcClient interface {
 	IndexDoc(ctx context.Context, in *IndexDocReq, opts ...tropt.CallOption) (*IndexDocRsp, error)
@@ -709,97 +629,64 @@ var _ grpc1.ClientConn
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc1.SupportPackageIsVersion4
 
-// SearchdAdminClient is the client API for SearchdAdmin service.
+// AdminClient is the client API for Admin service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
-type SearchdAdminClient interface {
-	CreateShard(ctx context1.Context, in *CreateShardReq, opts ...grpc1.CallOption) (*CreateShardRsp, error)
-	RemoveShard(ctx context1.Context, in *RemoveShardReq, opts ...grpc1.CallOption) (*RemoveShardRsp, error)
+type AdminClient interface {
+	Info(ctx context1.Context, in *InfoReq, opts ...grpc1.CallOption) (*InfoRsp, error)
 }
 
-type searchdAdminClient struct {
+type adminClient struct {
 	cc *grpc1.ClientConn
 }
 
-func NewSearchdAdminClient(cc *grpc1.ClientConn) SearchdAdminClient {
-	return &searchdAdminClient{cc}
+func NewAdminClient(cc *grpc1.ClientConn) AdminClient {
+	return &adminClient{cc}
 }
 
-func (c *searchdAdminClient) CreateShard(ctx context1.Context, in *CreateShardReq, opts ...grpc1.CallOption) (*CreateShardRsp, error) {
-	out := new(CreateShardRsp)
-	err := c.cc.Invoke(ctx, "/searchdpb.SearchdAdmin/CreateShard", in, out, opts...)
+func (c *adminClient) Info(ctx context1.Context, in *InfoReq, opts ...grpc1.CallOption) (*InfoRsp, error) {
+	out := new(InfoRsp)
+	err := c.cc.Invoke(ctx, "/searchdpb.Admin/Info", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *searchdAdminClient) RemoveShard(ctx context1.Context, in *RemoveShardReq, opts ...grpc1.CallOption) (*RemoveShardRsp, error) {
-	out := new(RemoveShardRsp)
-	err := c.cc.Invoke(ctx, "/searchdpb.SearchdAdmin/RemoveShard", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
+// AdminServer is the server API for Admin service.
+type AdminServer interface {
+	Info(context1.Context, *InfoReq) (*InfoRsp, error)
 }
 
-// SearchdAdminServer is the server API for SearchdAdmin service.
-type SearchdAdminServer interface {
-	CreateShard(context1.Context, *CreateShardReq) (*CreateShardRsp, error)
-	RemoveShard(context1.Context, *RemoveShardReq) (*RemoveShardRsp, error)
+func RegisterAdminServer(s *grpc1.Server, srv AdminServer) {
+	s.RegisterService(&_Admin_serviceDesc, srv)
 }
 
-func RegisterSearchdAdminServer(s *grpc1.Server, srv SearchdAdminServer) {
-	s.RegisterService(&_SearchdAdmin_serviceDesc, srv)
-}
-
-func _SearchdAdmin_CreateShard_Handler(srv interface{}, ctx context1.Context, dec func(interface{}) error, interceptor grpc1.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateShardReq)
+func _Admin_Info_Handler(srv interface{}, ctx context1.Context, dec func(interface{}) error, interceptor grpc1.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InfoReq)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SearchdAdminServer).CreateShard(ctx, in)
+		return srv.(AdminServer).Info(ctx, in)
 	}
 	info := &grpc1.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/searchdpb.SearchdAdmin/CreateShard",
+		FullMethod: "/searchdpb.Admin/Info",
 	}
 	handler := func(ctx context1.Context, req interface{}) (interface{}, error) {
-		return srv.(SearchdAdminServer).CreateShard(ctx, req.(*CreateShardReq))
+		return srv.(AdminServer).Info(ctx, req.(*InfoReq))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _SearchdAdmin_RemoveShard_Handler(srv interface{}, ctx context1.Context, dec func(interface{}) error, interceptor grpc1.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RemoveShardReq)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(SearchdAdminServer).RemoveShard(ctx, in)
-	}
-	info := &grpc1.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/searchdpb.SearchdAdmin/RemoveShard",
-	}
-	handler := func(ctx context1.Context, req interface{}) (interface{}, error) {
-		return srv.(SearchdAdminServer).RemoveShard(ctx, req.(*RemoveShardReq))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-var _SearchdAdmin_serviceDesc = grpc1.ServiceDesc{
-	ServiceName: "searchdpb.SearchdAdmin",
-	HandlerType: (*SearchdAdminServer)(nil),
+var _Admin_serviceDesc = grpc1.ServiceDesc{
+	ServiceName: "searchdpb.Admin",
+	HandlerType: (*AdminServer)(nil),
 	Methods: []grpc1.MethodDesc{
 		{
-			MethodName: "CreateShard",
-			Handler:    _SearchdAdmin_CreateShard_Handler,
-		},
-		{
-			MethodName: "RemoveShard",
-			Handler:    _SearchdAdmin_RemoveShard_Handler,
+			MethodName: "Info",
+			Handler:    _Admin_Info_Handler,
 		},
 	},
 	Streams:  []grpc1.StreamDesc{},
@@ -936,38 +823,36 @@ var _Searchd_serviceDesc = grpc1.ServiceDesc{
 	Metadata: "searchd.proto",
 }
 
-func init() { proto.RegisterFile("searchd.proto", fileDescriptor_searchd_7e33600c41f609fc) }
+func init() { proto.RegisterFile("searchd.proto", fileDescriptor_searchd_4d6dc1d03718a0db) }
 
-var fileDescriptor_searchd_7e33600c41f609fc = []byte{
-	// 467 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x53, 0xd1, 0x8a, 0xd3, 0x40,
-	0x14, 0xed, 0xd8, 0xb4, 0x35, 0xb7, 0xdb, 0x52, 0xc6, 0x65, 0x37, 0x06, 0x84, 0x30, 0xa0, 0x5b,
-	0x14, 0xb2, 0x50, 0xc5, 0x27, 0x51, 0x74, 0x53, 0xd8, 0x3e, 0xb8, 0xe2, 0xac, 0x88, 0x6f, 0x92,
-	0xce, 0x8c, 0xac, 0x0f, 0xc9, 0xcc, 0x66, 0x52, 0xd9, 0xfe, 0x8b, 0x6f, 0xfe, 0x88, 0x9f, 0x26,
-	0x33, 0x93, 0x96, 0x29, 0x36, 0xd5, 0xb7, 0xb9, 0xf7, 0x9e, 0x73, 0xee, 0xc9, 0xe5, 0x04, 0x46,
-	0x5a, 0xe4, 0x15, 0xbb, 0xe1, 0xa9, 0xaa, 0x64, 0x2d, 0x71, 0xd8, 0x94, 0x6a, 0x19, 0x47, 0x77,
-	0xee, 0x7d, 0xae, 0x96, 0xe7, 0xcd, 0xd3, 0x81, 0xc8, 0x53, 0x18, 0x5f, 0x54, 0x22, 0xaf, 0xc5,
-	0xf5, 0x4d, 0x5e, 0x71, 0x2a, 0x6e, 0x71, 0x04, 0x03, 0x6d, 0xde, 0x8b, 0x2c, 0x42, 0x09, 0x9a,
-	0x86, 0x74, 0x53, 0x92, 0xc9, 0x2e, 0x56, 0x2b, 0xc3, 0xa6, 0xa2, 0x90, 0x3f, 0xfe, 0x93, 0xed,
-	0x63, 0xb5, 0x22, 0x57, 0x30, 0x5c, 0x94, 0x5c, 0xdc, 0x65, 0x92, 0x1d, 0xa4, 0xe2, 0xc7, 0xd0,
-	0xe5, 0x92, 0x45, 0xf7, 0x12, 0x34, 0x1d, 0xce, 0x1e, 0xa4, 0xcd, 0x17, 0xa8, 0x65, 0x9a, 0x49,
-	0xb6, 0x2a, 0x44, 0x59, 0x53, 0x33, 0x27, 0x23, 0x4f, 0x4f, 0x2b, 0xf2, 0x1a, 0x8e, 0xdc, 0xc2,
-	0x7f, 0xea, 0x1f, 0x43, 0x8f, 0x4b, 0xb6, 0xc8, 0xec, 0x86, 0x90, 0xba, 0x82, 0x8c, 0x7d, 0xbe,
-	0x56, 0x64, 0x0d, 0xe1, 0xb5, 0x5d, 0x7c, 0x58, 0xec, 0x09, 0xf4, 0x6e, 0x57, 0xa2, 0x5a, 0x37,
-	0x76, 0x27, 0x9e, 0xdd, 0x8f, 0xa6, 0x4f, 0xdd, 0xd8, 0x2c, 0xd5, 0x75, 0x5e, 0xd5, 0x51, 0x37,
-	0x41, 0xd3, 0x80, 0xba, 0xc2, 0x74, 0x99, 0x5c, 0x95, 0x75, 0x14, 0x24, 0x68, 0x3a, 0xa2, 0xae,
-	0x20, 0x2f, 0xb6, 0xab, 0xb5, 0xc2, 0x67, 0x10, 0x70, 0xc9, 0x74, 0x84, 0x92, 0x6e, 0xdb, 0x39,
-	0x2c, 0x80, 0xfc, 0x42, 0x30, 0xb8, 0x90, 0x45, 0x91, 0x97, 0x1c, 0x3f, 0x83, 0xa0, 0x5e, 0x2b,
-	0x61, 0xcd, 0x8e, 0x67, 0xa7, 0xe9, 0x36, 0x1b, 0x69, 0x83, 0x48, 0x3f, 0xad, 0x95, 0xa0, 0x16,
-	0x84, 0xcf, 0xdc, 0xbd, 0xbb, 0xad, 0xf7, 0xbe, 0xec, 0xd8, 0x8b, 0xe3, 0x93, 0xcd, 0xe1, 0x8c,
-	0xdb, 0xf0, 0xb2, 0xb3, 0x39, 0xdd, 0x23, 0x08, 0x8c, 0x1c, 0x0e, 0xa1, 0xb7, 0xb8, 0xca, 0xe6,
-	0x5f, 0x26, 0x1d, 0x0c, 0xd0, 0xa7, 0xf3, 0xf7, 0x1f, 0x3e, 0xcf, 0x27, 0xe8, 0xdd, 0x10, 0x42,
-	0x2e, 0xd9, 0x57, 0x59, 0x0a, 0xf9, 0x6d, 0xf6, 0x13, 0xc1, 0x91, 0xfb, 0x38, 0xfe, 0x96, 0x17,
-	0xdf, 0x4b, 0x3c, 0x87, 0xa1, 0x17, 0x33, 0xfc, 0xd0, 0xf7, 0xba, 0x13, 0xd5, 0xb8, 0x6d, 0xa4,
-	0x15, 0xe9, 0x18, 0x19, 0x2f, 0x6f, 0x3b, 0x32, 0xbb, 0x99, 0x8d, 0xdb, 0x46, 0x46, 0x66, 0xf6,
-	0x1b, 0xc1, 0xa0, 0xb1, 0x87, 0x5f, 0xc1, 0xfd, 0x4d, 0xc0, 0xf0, 0x89, 0x47, 0xf2, 0x52, 0x1c,
-	0xef, 0xed, 0x5b, 0x43, 0x6f, 0x20, 0xdc, 0xe6, 0x09, 0x9f, 0xfe, 0xb5, 0xb3, 0xe1, 0xef, 0x1f,
-	0x58, 0x81, 0x97, 0xd0, 0x77, 0x4e, 0xf0, 0xb1, 0x07, 0xda, 0x66, 0x32, 0xde, 0xd3, 0x35, 0xbc,
-	0x65, 0xdf, 0xfe, 0xea, 0xcf, 0xff, 0x04, 0x00, 0x00, 0xff, 0xff, 0xd5, 0xbd, 0xff, 0xd2, 0x20,
-	0x04, 0x00, 0x00,
+var fileDescriptor_searchd_4d6dc1d03718a0db = []byte{
+	// 444 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x53, 0x51, 0x8b, 0xd3, 0x40,
+	0x10, 0xee, 0x7a, 0x69, 0xeb, 0x4e, 0xed, 0x51, 0xc6, 0xa3, 0x86, 0x80, 0x10, 0x17, 0xf4, 0x02,
+	0x42, 0x4e, 0xaa, 0x08, 0x82, 0x28, 0x6a, 0x0a, 0x97, 0x07, 0x4f, 0x5c, 0x45, 0x7c, 0x93, 0x36,
+	0xbb, 0xc7, 0xf9, 0x90, 0xec, 0x36, 0x9b, 0xca, 0xf5, 0xf7, 0xf8, 0x47, 0xfc, 0x69, 0xb2, 0xbb,
+	0x69, 0x88, 0x58, 0xbd, 0xb7, 0xf9, 0x66, 0xbe, 0xfd, 0x66, 0xf2, 0xcd, 0x04, 0xa6, 0x46, 0xae,
+	0xea, 0xe2, 0x4a, 0xa4, 0xba, 0x56, 0x8d, 0x42, 0xda, 0x42, 0xbd, 0x8e, 0xc2, 0x6b, 0x1f, 0x9f,
+	0xe9, 0xf5, 0x59, 0x1b, 0x7a, 0x12, 0xa3, 0x30, 0xce, 0xab, 0x4b, 0xc5, 0xe5, 0x86, 0x3d, 0x68,
+	0x43, 0xa3, 0x71, 0x0e, 0x23, 0x73, 0xb5, 0xaa, 0x85, 0x09, 0x49, 0x7c, 0x94, 0x50, 0xde, 0x22,
+	0x76, 0x01, 0x93, 0xbc, 0x12, 0xf2, 0x3a, 0x53, 0x05, 0x97, 0x1b, 0x0c, 0x61, 0xec, 0x0a, 0x79,
+	0x16, 0x92, 0x98, 0x24, 0x94, 0xef, 0x21, 0x3e, 0x84, 0x23, 0xa1, 0x8a, 0xf0, 0x56, 0x4c, 0x92,
+	0xc9, 0xe2, 0x6e, 0xda, 0xf6, 0xd4, 0xeb, 0x34, 0x53, 0xc5, 0xb6, 0x94, 0x55, 0xc3, 0x6d, 0x9d,
+	0x4d, 0x7b, 0x7a, 0x46, 0xb3, 0x57, 0x70, 0x87, 0xcb, 0x52, 0xfd, 0x90, 0x37, 0xea, 0x9f, 0xc0,
+	0x50, 0xa8, 0x22, 0xcf, 0x5c, 0x07, 0xca, 0x3d, 0x60, 0xc7, 0xfd, 0xf7, 0x46, 0xb3, 0x1d, 0xd0,
+	0x4f, 0xae, 0xf1, 0xff, 0xc5, 0x1e, 0xc1, 0x70, 0xb3, 0x95, 0xf5, 0xae, 0x1d, 0x77, 0xd6, 0x1b,
+	0xf7, 0xa3, 0xcd, 0x73, 0x5f, 0xb6, 0x4d, 0x4d, 0xb3, 0xaa, 0x9b, 0xf0, 0x28, 0x26, 0x49, 0xc0,
+	0x3d, 0xb0, 0xd9, 0x42, 0x6d, 0xab, 0x26, 0x0c, 0x62, 0x92, 0x4c, 0xb9, 0x07, 0xec, 0x59, 0xd7,
+	0xda, 0x68, 0x3c, 0x85, 0x40, 0xa8, 0xc2, 0x9b, 0xf9, 0x0f, 0x3b, 0x1c, 0x81, 0xfd, 0x24, 0x30,
+	0x7e, 0xa7, 0xca, 0x72, 0x55, 0x09, 0x7c, 0x0c, 0x41, 0xb3, 0xd3, 0xd2, 0x0d, 0x7b, 0xbc, 0xb8,
+	0x97, 0x76, 0xdb, 0x4c, 0x5b, 0x46, 0xfa, 0x79, 0xa7, 0x25, 0x77, 0x24, 0x3c, 0xbd, 0xc9, 0xef,
+	0xf3, 0x81, 0x73, 0x1c, 0xe7, 0x7b, 0xe3, 0xec, 0x37, 0xd0, 0xf3, 0xc1, 0xde, 0xba, 0xfb, 0x10,
+	0x58, 0x39, 0xa4, 0x30, 0xcc, 0x2f, 0xb2, 0xe5, 0xd7, 0xd9, 0x00, 0x01, 0x46, 0x7c, 0xf9, 0xfe,
+	0xc3, 0x97, 0xe5, 0x8c, 0xbc, 0x9d, 0x00, 0x15, 0xaa, 0xf8, 0xa6, 0x2a, 0xa9, 0x2e, 0x17, 0x2f,
+	0x60, 0xf8, 0x46, 0x94, 0xdf, 0x2b, 0x7c, 0x02, 0x81, 0xbd, 0x18, 0xc4, 0xde, 0x70, 0xed, 0x35,
+	0x45, 0x7f, 0xe5, 0x8c, 0x66, 0x83, 0xc5, 0x2f, 0x02, 0x63, 0xef, 0x8b, 0xc0, 0x97, 0x70, 0x7b,
+	0xbf, 0x7c, 0x9c, 0xff, 0xc1, 0xee, 0x2e, 0x2c, 0x3a, 0x98, 0xb7, 0x4a, 0xf8, 0x1a, 0x68, 0xb7,
+	0x6b, 0xec, 0xbb, 0xd3, 0xbf, 0xa0, 0xe8, 0x70, 0xc1, 0x09, 0x3c, 0x87, 0x91, 0x9f, 0x04, 0x4f,
+	0x7a, 0xa4, 0xee, 0x5e, 0xa2, 0x03, 0x59, 0xfb, 0x6e, 0x3d, 0x72, 0x3f, 0xce, 0xd3, 0xdf, 0x01,
+	0x00, 0x00, 0xff, 0xff, 0xd6, 0xc8, 0x27, 0xe1, 0x6e, 0x03, 0x00, 0x00,
 }
