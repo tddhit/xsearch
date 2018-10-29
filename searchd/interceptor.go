@@ -26,10 +26,6 @@ func CheckParams(s *service) interceptor.UnaryServerMiddleware {
 
 			var shardID string
 			switch info.FullMethod {
-			case "/searchdpb.Searchd/IndexDoc":
-				shardID = req.(*searchdpb.IndexDocReq).ShardID
-			case "/searchdpb.Searchd/RemoveDoc":
-				shardID = req.(*searchdpb.RemoveDocReq).ShardID
 			case "/searchdpb.Searchd/Search":
 				shardID = req.(*searchdpb.SearchReq).ShardID
 			}

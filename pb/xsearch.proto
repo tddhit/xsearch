@@ -14,7 +14,19 @@ message Query {
 message Document {
     string ID = 1;
     string content = 2;
-    repeated Token tokens = 3;
+    repeated xsearchpb.Token tokens = 3;
     float BM25Score = 4;
     float SimNetScore = 5;
+}
+
+message Command {
+    enum Type {
+        INDEX = 0; 
+        REMOVE = 1;
+    } 
+    Type type = 1; 
+    oneof doc_oneof {
+        xsearchpb.Document doc = 2;
+        string docID = 3;
+    }
 }

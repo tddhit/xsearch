@@ -40,6 +40,21 @@ var searchdCommand = cli.Command{
 			Usage: "diskqueue addr",
 		},
 		cli.StringFlag{
+			Name:  "dict",
+			Usage: "segment dict",
+			Value: "./dict/segment.dict",
+		},
+		cli.StringFlag{
+			Name:  "userdict",
+			Usage: "user defined segment dict",
+			Value: "./dict/user_segment.dict",
+		},
+		cli.StringFlag{
+			Name:  "stopdict",
+			Usage: "stopwords dict",
+			Value: "./dict/stopwords.dict",
+		},
+		cli.StringFlag{
 			Name:  "datadir",
 			Usage: "data directory",
 			Value: "./data",

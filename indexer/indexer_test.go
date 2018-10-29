@@ -9,20 +9,18 @@ import (
 	"os"
 	"runtime"
 	"sync"
-	"sync/atomic"
 	"syscall"
 	"testing"
 	"unsafe"
 
 	"github.com/tddhit/tools/log"
 	"github.com/tddhit/tools/mmap"
-	"github.com/tddhit/xsearch/indexer/option"
 	"github.com/tddhit/xsearch/pb"
 )
 
 func TestSearch(t *testing.T) {
 	log.Init("test/indexer.log", log.ERROR)
-	indexer := New(option.WithIndexDir("./test/"))
+	indexer := New(WithIndexDir("./test/"))
 	tokens := []*xsearchpb.Token{
 		&xsearchpb.Token{Term: "Linux"},
 		&xsearchpb.Token{Term: "Go"},
@@ -56,7 +54,6 @@ func TestIndex(t *testing.T) {
 	docs := make([]*xsearchpb.Document, sharding)
 	for i := range docs {
 		docs[i] = &xsearchpb.Document{
-			ID:     uint64(numDocs/sharding) * uint64(i),
 			Tokens: make([]*xsearchpb.Token, docSize),
 		}
 	}
@@ -73,7 +70,7 @@ func TestIndex(t *testing.T) {
 			}
 		}
 	}
-	indexer := New(option.WithIndexDir("./test/"))
+	indexer := New(WithIndexDir("./test/"))
 	var wg sync.WaitGroup
 	for i := 0; i < sharding; i++ {
 		wg.Add(1)
@@ -82,7 +79,6 @@ func TestIndex(t *testing.T) {
 				if err := indexer.IndexDocument(docs[shardingID]); err != nil {
 					log.Fatal(err)
 				}
-				atomic.AddUint64(&docs[shardingID].ID, 1)
 			}
 			wg.Done()
 		}(i)

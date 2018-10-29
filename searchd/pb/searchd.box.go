@@ -31,29 +31,6 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
-type Command_Type int32
-
-const (
-	Command_INDEX  Command_Type = 0
-	Command_REMOVE Command_Type = 1
-)
-
-var Command_Type_name = map[int32]string{
-	0: "INDEX",
-	1: "REMOVE",
-}
-var Command_Type_value = map[string]int32{
-	"INDEX":  0,
-	"REMOVE": 1,
-}
-
-func (x Command_Type) String() string {
-	return proto.EnumName(Command_Type_name, int32(x))
-}
-func (Command_Type) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_searchd_4d6dc1d03718a0db, []int{8, 0}
-}
-
 type InfoReq struct {
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
@@ -64,7 +41,7 @@ func (m *InfoReq) Reset()         { *m = InfoReq{} }
 func (m *InfoReq) String() string { return proto.CompactTextString(m) }
 func (*InfoReq) ProtoMessage()    {}
 func (*InfoReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_searchd_4d6dc1d03718a0db, []int{0}
+	return fileDescriptor_searchd_711f0da9041f8b6b, []int{0}
 }
 func (m *InfoReq) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_InfoReq.Unmarshal(m, b)
@@ -95,7 +72,7 @@ func (m *InfoRsp) Reset()         { *m = InfoRsp{} }
 func (m *InfoRsp) String() string { return proto.CompactTextString(m) }
 func (*InfoRsp) ProtoMessage()    {}
 func (*InfoRsp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_searchd_4d6dc1d03718a0db, []int{1}
+	return fileDescriptor_searchd_711f0da9041f8b6b, []int{1}
 }
 func (m *InfoRsp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_InfoRsp.Unmarshal(m, b)
@@ -122,158 +99,6 @@ func (m *InfoRsp) GetShards() []string {
 	return nil
 }
 
-type IndexDocReq struct {
-	ShardID              string       `protobuf:"bytes,1,opt,name=shardID,proto3" json:"shardID,omitempty"`
-	Doc                  *pb.Document `protobuf:"bytes,2,opt,name=doc,proto3" json:"doc,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
-	XXX_unrecognized     []byte       `json:"-"`
-	XXX_sizecache        int32        `json:"-"`
-}
-
-func (m *IndexDocReq) Reset()         { *m = IndexDocReq{} }
-func (m *IndexDocReq) String() string { return proto.CompactTextString(m) }
-func (*IndexDocReq) ProtoMessage()    {}
-func (*IndexDocReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_searchd_4d6dc1d03718a0db, []int{2}
-}
-func (m *IndexDocReq) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_IndexDocReq.Unmarshal(m, b)
-}
-func (m *IndexDocReq) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_IndexDocReq.Marshal(b, m, deterministic)
-}
-func (dst *IndexDocReq) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_IndexDocReq.Merge(dst, src)
-}
-func (m *IndexDocReq) XXX_Size() int {
-	return xxx_messageInfo_IndexDocReq.Size(m)
-}
-func (m *IndexDocReq) XXX_DiscardUnknown() {
-	xxx_messageInfo_IndexDocReq.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_IndexDocReq proto.InternalMessageInfo
-
-func (m *IndexDocReq) GetShardID() string {
-	if m != nil {
-		return m.ShardID
-	}
-	return ""
-}
-
-func (m *IndexDocReq) GetDoc() *pb.Document {
-	if m != nil {
-		return m.Doc
-	}
-	return nil
-}
-
-type IndexDocRsp struct {
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *IndexDocRsp) Reset()         { *m = IndexDocRsp{} }
-func (m *IndexDocRsp) String() string { return proto.CompactTextString(m) }
-func (*IndexDocRsp) ProtoMessage()    {}
-func (*IndexDocRsp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_searchd_4d6dc1d03718a0db, []int{3}
-}
-func (m *IndexDocRsp) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_IndexDocRsp.Unmarshal(m, b)
-}
-func (m *IndexDocRsp) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_IndexDocRsp.Marshal(b, m, deterministic)
-}
-func (dst *IndexDocRsp) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_IndexDocRsp.Merge(dst, src)
-}
-func (m *IndexDocRsp) XXX_Size() int {
-	return xxx_messageInfo_IndexDocRsp.Size(m)
-}
-func (m *IndexDocRsp) XXX_DiscardUnknown() {
-	xxx_messageInfo_IndexDocRsp.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_IndexDocRsp proto.InternalMessageInfo
-
-type RemoveDocReq struct {
-	ShardID              string   `protobuf:"bytes,1,opt,name=shardID,proto3" json:"shardID,omitempty"`
-	DocID                string   `protobuf:"bytes,2,opt,name=docID,proto3" json:"docID,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *RemoveDocReq) Reset()         { *m = RemoveDocReq{} }
-func (m *RemoveDocReq) String() string { return proto.CompactTextString(m) }
-func (*RemoveDocReq) ProtoMessage()    {}
-func (*RemoveDocReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_searchd_4d6dc1d03718a0db, []int{4}
-}
-func (m *RemoveDocReq) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_RemoveDocReq.Unmarshal(m, b)
-}
-func (m *RemoveDocReq) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_RemoveDocReq.Marshal(b, m, deterministic)
-}
-func (dst *RemoveDocReq) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RemoveDocReq.Merge(dst, src)
-}
-func (m *RemoveDocReq) XXX_Size() int {
-	return xxx_messageInfo_RemoveDocReq.Size(m)
-}
-func (m *RemoveDocReq) XXX_DiscardUnknown() {
-	xxx_messageInfo_RemoveDocReq.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_RemoveDocReq proto.InternalMessageInfo
-
-func (m *RemoveDocReq) GetShardID() string {
-	if m != nil {
-		return m.ShardID
-	}
-	return ""
-}
-
-func (m *RemoveDocReq) GetDocID() string {
-	if m != nil {
-		return m.DocID
-	}
-	return ""
-}
-
-type RemoveDocRsp struct {
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *RemoveDocRsp) Reset()         { *m = RemoveDocRsp{} }
-func (m *RemoveDocRsp) String() string { return proto.CompactTextString(m) }
-func (*RemoveDocRsp) ProtoMessage()    {}
-func (*RemoveDocRsp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_searchd_4d6dc1d03718a0db, []int{5}
-}
-func (m *RemoveDocRsp) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_RemoveDocRsp.Unmarshal(m, b)
-}
-func (m *RemoveDocRsp) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_RemoveDocRsp.Marshal(b, m, deterministic)
-}
-func (dst *RemoveDocRsp) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RemoveDocRsp.Merge(dst, src)
-}
-func (m *RemoveDocRsp) XXX_Size() int {
-	return xxx_messageInfo_RemoveDocRsp.Size(m)
-}
-func (m *RemoveDocRsp) XXX_DiscardUnknown() {
-	xxx_messageInfo_RemoveDocRsp.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_RemoveDocRsp proto.InternalMessageInfo
-
 type SearchReq struct {
 	ShardID              string    `protobuf:"bytes,1,opt,name=shardID,proto3" json:"shardID,omitempty"`
 	Query                *pb.Query `protobuf:"bytes,2,opt,name=query,proto3" json:"query,omitempty"`
@@ -288,7 +113,7 @@ func (m *SearchReq) Reset()         { *m = SearchReq{} }
 func (m *SearchReq) String() string { return proto.CompactTextString(m) }
 func (*SearchReq) ProtoMessage()    {}
 func (*SearchReq) Descriptor() ([]byte, []int) {
-	return fileDescriptor_searchd_4d6dc1d03718a0db, []int{6}
+	return fileDescriptor_searchd_711f0da9041f8b6b, []int{2}
 }
 func (m *SearchReq) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SearchReq.Unmarshal(m, b)
@@ -347,7 +172,7 @@ func (m *SearchRsp) Reset()         { *m = SearchRsp{} }
 func (m *SearchRsp) String() string { return proto.CompactTextString(m) }
 func (*SearchRsp) ProtoMessage()    {}
 func (*SearchRsp) Descriptor() ([]byte, []int) {
-	return fileDescriptor_searchd_4d6dc1d03718a0db, []int{7}
+	return fileDescriptor_searchd_711f0da9041f8b6b, []int{3}
 }
 func (m *SearchRsp) XXX_Unmarshal(b []byte) error {
 	return xxx_messageInfo_SearchRsp.Unmarshal(m, b)
@@ -374,164 +199,11 @@ func (m *SearchRsp) GetDocs() []*pb.Document {
 	return nil
 }
 
-type Command struct {
-	Type Command_Type `protobuf:"varint,1,opt,name=type,proto3,enum=searchdpb.Command_Type" json:"type,omitempty"`
-	// Types that are valid to be assigned to DocOneof:
-	//	*Command_Doc
-	//	*Command_DocID
-	DocOneof             isCommand_DocOneof `protobuf_oneof:"doc_oneof"`
-	XXX_NoUnkeyedLiteral struct{}           `json:"-"`
-	XXX_unrecognized     []byte             `json:"-"`
-	XXX_sizecache        int32              `json:"-"`
-}
-
-func (m *Command) Reset()         { *m = Command{} }
-func (m *Command) String() string { return proto.CompactTextString(m) }
-func (*Command) ProtoMessage()    {}
-func (*Command) Descriptor() ([]byte, []int) {
-	return fileDescriptor_searchd_4d6dc1d03718a0db, []int{8}
-}
-func (m *Command) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_Command.Unmarshal(m, b)
-}
-func (m *Command) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_Command.Marshal(b, m, deterministic)
-}
-func (dst *Command) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Command.Merge(dst, src)
-}
-func (m *Command) XXX_Size() int {
-	return xxx_messageInfo_Command.Size(m)
-}
-func (m *Command) XXX_DiscardUnknown() {
-	xxx_messageInfo_Command.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_Command proto.InternalMessageInfo
-
-type isCommand_DocOneof interface {
-	isCommand_DocOneof()
-}
-
-type Command_Doc struct {
-	Doc *pb.Document `protobuf:"bytes,2,opt,name=doc,proto3,oneof"`
-}
-type Command_DocID struct {
-	DocID string `protobuf:"bytes,3,opt,name=docID,proto3,oneof"`
-}
-
-func (*Command_Doc) isCommand_DocOneof()   {}
-func (*Command_DocID) isCommand_DocOneof() {}
-
-func (m *Command) GetDocOneof() isCommand_DocOneof {
-	if m != nil {
-		return m.DocOneof
-	}
-	return nil
-}
-
-func (m *Command) GetType() Command_Type {
-	if m != nil {
-		return m.Type
-	}
-	return Command_INDEX
-}
-
-func (m *Command) GetDoc() *pb.Document {
-	if x, ok := m.GetDocOneof().(*Command_Doc); ok {
-		return x.Doc
-	}
-	return nil
-}
-
-func (m *Command) GetDocID() string {
-	if x, ok := m.GetDocOneof().(*Command_DocID); ok {
-		return x.DocID
-	}
-	return ""
-}
-
-// XXX_OneofFuncs is for the internal use of the proto package.
-func (*Command) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
-	return _Command_OneofMarshaler, _Command_OneofUnmarshaler, _Command_OneofSizer, []interface{}{
-		(*Command_Doc)(nil),
-		(*Command_DocID)(nil),
-	}
-}
-
-func _Command_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
-	m := msg.(*Command)
-	// doc_oneof
-	switch x := m.DocOneof.(type) {
-	case *Command_Doc:
-		b.EncodeVarint(2<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.Doc); err != nil {
-			return err
-		}
-	case *Command_DocID:
-		b.EncodeVarint(3<<3 | proto.WireBytes)
-		b.EncodeStringBytes(x.DocID)
-	case nil:
-	default:
-		return fmt.Errorf("Command.DocOneof has unexpected type %T", x)
-	}
-	return nil
-}
-
-func _Command_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
-	m := msg.(*Command)
-	switch tag {
-	case 2: // doc_oneof.doc
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(pb.Document)
-		err := b.DecodeMessage(msg)
-		m.DocOneof = &Command_Doc{msg}
-		return true, err
-	case 3: // doc_oneof.docID
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeStringBytes()
-		m.DocOneof = &Command_DocID{x}
-		return true, err
-	default:
-		return false, nil
-	}
-}
-
-func _Command_OneofSizer(msg proto.Message) (n int) {
-	m := msg.(*Command)
-	// doc_oneof
-	switch x := m.DocOneof.(type) {
-	case *Command_Doc:
-		s := proto.Size(x.Doc)
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case *Command_DocID:
-		n += 1 // tag and wire
-		n += proto.SizeVarint(uint64(len(x.DocID)))
-		n += len(x.DocID)
-	case nil:
-	default:
-		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
-	}
-	return n
-}
-
 func init() {
 	proto.RegisterType((*InfoReq)(nil), "searchdpb.InfoReq")
 	proto.RegisterType((*InfoRsp)(nil), "searchdpb.InfoRsp")
-	proto.RegisterType((*IndexDocReq)(nil), "searchdpb.IndexDocReq")
-	proto.RegisterType((*IndexDocRsp)(nil), "searchdpb.IndexDocRsp")
-	proto.RegisterType((*RemoveDocReq)(nil), "searchdpb.RemoveDocReq")
-	proto.RegisterType((*RemoveDocRsp)(nil), "searchdpb.RemoveDocRsp")
 	proto.RegisterType((*SearchReq)(nil), "searchdpb.SearchReq")
 	proto.RegisterType((*SearchRsp)(nil), "searchdpb.SearchRsp")
-	proto.RegisterType((*Command)(nil), "searchdpb.Command")
-	proto.RegisterEnum("searchdpb.Command_Type", Command_Type_name, Command_Type_value)
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -571,8 +243,6 @@ func (d *adminGrpcServiceDesc) Desc() interface{} {
 var AdminGrpcServiceDesc = &adminGrpcServiceDesc{&_Admin_serviceDesc}
 
 type SearchdGrpcClient interface {
-	IndexDoc(ctx context.Context, in *IndexDocReq, opts ...tropt.CallOption) (*IndexDocRsp, error)
-	RemoveDoc(ctx context.Context, in *RemoveDocReq, opts ...tropt.CallOption) (*RemoveDocRsp, error)
 	Search(ctx context.Context, in *SearchReq, opts ...tropt.CallOption) (*SearchRsp, error)
 }
 
@@ -582,24 +252,6 @@ type searchdGrpcClient struct {
 
 func NewSearchdGrpcClient(cc tr.ClientConn) SearchdGrpcClient {
 	return &searchdGrpcClient{cc}
-}
-
-func (c *searchdGrpcClient) IndexDoc(ctx context.Context, in *IndexDocReq, opts ...tropt.CallOption) (*IndexDocRsp, error) {
-	out := new(IndexDocRsp)
-	err := c.cc.Invoke(ctx, "/searchdpb.Searchd/IndexDoc", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *searchdGrpcClient) RemoveDoc(ctx context.Context, in *RemoveDocReq, opts ...tropt.CallOption) (*RemoveDocRsp, error) {
-	out := new(RemoveDocRsp)
-	err := c.cc.Invoke(ctx, "/searchdpb.Searchd/RemoveDoc", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *searchdGrpcClient) Search(ctx context.Context, in *SearchReq, opts ...tropt.CallOption) (*SearchRsp, error) {
@@ -697,8 +349,6 @@ var _Admin_serviceDesc = grpc1.ServiceDesc{
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type SearchdClient interface {
-	IndexDoc(ctx context1.Context, in *IndexDocReq, opts ...grpc1.CallOption) (*IndexDocRsp, error)
-	RemoveDoc(ctx context1.Context, in *RemoveDocReq, opts ...grpc1.CallOption) (*RemoveDocRsp, error)
 	Search(ctx context1.Context, in *SearchReq, opts ...grpc1.CallOption) (*SearchRsp, error)
 }
 
@@ -708,24 +358,6 @@ type searchdClient struct {
 
 func NewSearchdClient(cc *grpc1.ClientConn) SearchdClient {
 	return &searchdClient{cc}
-}
-
-func (c *searchdClient) IndexDoc(ctx context1.Context, in *IndexDocReq, opts ...grpc1.CallOption) (*IndexDocRsp, error) {
-	out := new(IndexDocRsp)
-	err := c.cc.Invoke(ctx, "/searchdpb.Searchd/IndexDoc", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *searchdClient) RemoveDoc(ctx context1.Context, in *RemoveDocReq, opts ...grpc1.CallOption) (*RemoveDocRsp, error) {
-	out := new(RemoveDocRsp)
-	err := c.cc.Invoke(ctx, "/searchdpb.Searchd/RemoveDoc", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *searchdClient) Search(ctx context1.Context, in *SearchReq, opts ...grpc1.CallOption) (*SearchRsp, error) {
@@ -739,49 +371,11 @@ func (c *searchdClient) Search(ctx context1.Context, in *SearchReq, opts ...grpc
 
 // SearchdServer is the server API for Searchd service.
 type SearchdServer interface {
-	IndexDoc(context1.Context, *IndexDocReq) (*IndexDocRsp, error)
-	RemoveDoc(context1.Context, *RemoveDocReq) (*RemoveDocRsp, error)
 	Search(context1.Context, *SearchReq) (*SearchRsp, error)
 }
 
 func RegisterSearchdServer(s *grpc1.Server, srv SearchdServer) {
 	s.RegisterService(&_Searchd_serviceDesc, srv)
-}
-
-func _Searchd_IndexDoc_Handler(srv interface{}, ctx context1.Context, dec func(interface{}) error, interceptor grpc1.UnaryServerInterceptor) (interface{}, error) {
-	in := new(IndexDocReq)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(SearchdServer).IndexDoc(ctx, in)
-	}
-	info := &grpc1.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/searchdpb.Searchd/IndexDoc",
-	}
-	handler := func(ctx context1.Context, req interface{}) (interface{}, error) {
-		return srv.(SearchdServer).IndexDoc(ctx, req.(*IndexDocReq))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Searchd_RemoveDoc_Handler(srv interface{}, ctx context1.Context, dec func(interface{}) error, interceptor grpc1.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RemoveDocReq)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(SearchdServer).RemoveDoc(ctx, in)
-	}
-	info := &grpc1.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/searchdpb.Searchd/RemoveDoc",
-	}
-	handler := func(ctx context1.Context, req interface{}) (interface{}, error) {
-		return srv.(SearchdServer).RemoveDoc(ctx, req.(*RemoveDocReq))
-	}
-	return interceptor(ctx, in, info, handler)
 }
 
 func _Searchd_Search_Handler(srv interface{}, ctx context1.Context, dec func(interface{}) error, interceptor grpc1.UnaryServerInterceptor) (interface{}, error) {
@@ -807,14 +401,6 @@ var _Searchd_serviceDesc = grpc1.ServiceDesc{
 	HandlerType: (*SearchdServer)(nil),
 	Methods: []grpc1.MethodDesc{
 		{
-			MethodName: "IndexDoc",
-			Handler:    _Searchd_IndexDoc_Handler,
-		},
-		{
-			MethodName: "RemoveDoc",
-			Handler:    _Searchd_RemoveDoc_Handler,
-		},
-		{
 			MethodName: "Search",
 			Handler:    _Searchd_Search_Handler,
 		},
@@ -823,36 +409,25 @@ var _Searchd_serviceDesc = grpc1.ServiceDesc{
 	Metadata: "searchd.proto",
 }
 
-func init() { proto.RegisterFile("searchd.proto", fileDescriptor_searchd_4d6dc1d03718a0db) }
+func init() { proto.RegisterFile("searchd.proto", fileDescriptor_searchd_711f0da9041f8b6b) }
 
-var fileDescriptor_searchd_4d6dc1d03718a0db = []byte{
-	// 444 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x53, 0x51, 0x8b, 0xd3, 0x40,
-	0x10, 0xee, 0x7a, 0x69, 0xeb, 0x4e, 0xed, 0x51, 0xc6, 0xa3, 0x86, 0x80, 0x10, 0x17, 0xf4, 0x02,
-	0x42, 0x4e, 0xaa, 0x08, 0x82, 0x28, 0x6a, 0x0a, 0x97, 0x07, 0x4f, 0x5c, 0x45, 0x7c, 0x93, 0x36,
-	0xbb, 0xc7, 0xf9, 0x90, 0xec, 0x36, 0x9b, 0xca, 0xf5, 0xf7, 0xf8, 0x47, 0xfc, 0x69, 0xb2, 0xbb,
-	0x69, 0x88, 0x58, 0xbd, 0xb7, 0xf9, 0x66, 0xbe, 0xfd, 0x66, 0xf2, 0xcd, 0x04, 0xa6, 0x46, 0xae,
-	0xea, 0xe2, 0x4a, 0xa4, 0xba, 0x56, 0x8d, 0x42, 0xda, 0x42, 0xbd, 0x8e, 0xc2, 0x6b, 0x1f, 0x9f,
-	0xe9, 0xf5, 0x59, 0x1b, 0x7a, 0x12, 0xa3, 0x30, 0xce, 0xab, 0x4b, 0xc5, 0xe5, 0x86, 0x3d, 0x68,
-	0x43, 0xa3, 0x71, 0x0e, 0x23, 0x73, 0xb5, 0xaa, 0x85, 0x09, 0x49, 0x7c, 0x94, 0x50, 0xde, 0x22,
-	0x76, 0x01, 0x93, 0xbc, 0x12, 0xf2, 0x3a, 0x53, 0x05, 0x97, 0x1b, 0x0c, 0x61, 0xec, 0x0a, 0x79,
-	0x16, 0x92, 0x98, 0x24, 0x94, 0xef, 0x21, 0x3e, 0x84, 0x23, 0xa1, 0x8a, 0xf0, 0x56, 0x4c, 0x92,
-	0xc9, 0xe2, 0x6e, 0xda, 0xf6, 0xd4, 0xeb, 0x34, 0x53, 0xc5, 0xb6, 0x94, 0x55, 0xc3, 0x6d, 0x9d,
-	0x4d, 0x7b, 0x7a, 0x46, 0xb3, 0x57, 0x70, 0x87, 0xcb, 0x52, 0xfd, 0x90, 0x37, 0xea, 0x9f, 0xc0,
-	0x50, 0xa8, 0x22, 0xcf, 0x5c, 0x07, 0xca, 0x3d, 0x60, 0xc7, 0xfd, 0xf7, 0x46, 0xb3, 0x1d, 0xd0,
-	0x4f, 0xae, 0xf1, 0xff, 0xc5, 0x1e, 0xc1, 0x70, 0xb3, 0x95, 0xf5, 0xae, 0x1d, 0x77, 0xd6, 0x1b,
-	0xf7, 0xa3, 0xcd, 0x73, 0x5f, 0xb6, 0x4d, 0x4d, 0xb3, 0xaa, 0x9b, 0xf0, 0x28, 0x26, 0x49, 0xc0,
-	0x3d, 0xb0, 0xd9, 0x42, 0x6d, 0xab, 0x26, 0x0c, 0x62, 0x92, 0x4c, 0xb9, 0x07, 0xec, 0x59, 0xd7,
-	0xda, 0x68, 0x3c, 0x85, 0x40, 0xa8, 0xc2, 0x9b, 0xf9, 0x0f, 0x3b, 0x1c, 0x81, 0xfd, 0x24, 0x30,
-	0x7e, 0xa7, 0xca, 0x72, 0x55, 0x09, 0x7c, 0x0c, 0x41, 0xb3, 0xd3, 0xd2, 0x0d, 0x7b, 0xbc, 0xb8,
-	0x97, 0x76, 0xdb, 0x4c, 0x5b, 0x46, 0xfa, 0x79, 0xa7, 0x25, 0x77, 0x24, 0x3c, 0xbd, 0xc9, 0xef,
-	0xf3, 0x81, 0x73, 0x1c, 0xe7, 0x7b, 0xe3, 0xec, 0x37, 0xd0, 0xf3, 0xc1, 0xde, 0xba, 0xfb, 0x10,
-	0x58, 0x39, 0xa4, 0x30, 0xcc, 0x2f, 0xb2, 0xe5, 0xd7, 0xd9, 0x00, 0x01, 0x46, 0x7c, 0xf9, 0xfe,
-	0xc3, 0x97, 0xe5, 0x8c, 0xbc, 0x9d, 0x00, 0x15, 0xaa, 0xf8, 0xa6, 0x2a, 0xa9, 0x2e, 0x17, 0x2f,
-	0x60, 0xf8, 0x46, 0x94, 0xdf, 0x2b, 0x7c, 0x02, 0x81, 0xbd, 0x18, 0xc4, 0xde, 0x70, 0xed, 0x35,
-	0x45, 0x7f, 0xe5, 0x8c, 0x66, 0x83, 0xc5, 0x2f, 0x02, 0x63, 0xef, 0x8b, 0xc0, 0x97, 0x70, 0x7b,
-	0xbf, 0x7c, 0x9c, 0xff, 0xc1, 0xee, 0x2e, 0x2c, 0x3a, 0x98, 0xb7, 0x4a, 0xf8, 0x1a, 0x68, 0xb7,
-	0x6b, 0xec, 0xbb, 0xd3, 0xbf, 0xa0, 0xe8, 0x70, 0xc1, 0x09, 0x3c, 0x87, 0x91, 0x9f, 0x04, 0x4f,
-	0x7a, 0xa4, 0xee, 0x5e, 0xa2, 0x03, 0x59, 0xfb, 0x6e, 0x3d, 0x72, 0x3f, 0xce, 0xd3, 0xdf, 0x01,
-	0x00, 0x00, 0xff, 0xff, 0xd6, 0xc8, 0x27, 0xe1, 0x6e, 0x03, 0x00, 0x00,
+var fileDescriptor_searchd_711f0da9041f8b6b = []byte{
+	// 262 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x6c, 0x50, 0x41, 0x4b, 0xc3, 0x30,
+	0x18, 0x35, 0xae, 0x6b, 0xe9, 0x37, 0x06, 0xf2, 0x39, 0x24, 0xf4, 0x54, 0x7b, 0xd0, 0x9e, 0x32,
+	0xa9, 0x22, 0x78, 0x1c, 0xec, 0xb2, 0xa3, 0xf1, 0x17, 0xb4, 0x4d, 0x64, 0x1e, 0xd6, 0xa4, 0x49,
+	0x0a, 0xee, 0xdf, 0x4b, 0x9b, 0x58, 0x06, 0x7a, 0x7b, 0xef, 0xe5, 0xe5, 0x7b, 0xdf, 0xf7, 0x60,
+	0x6d, 0x65, 0x6d, 0xda, 0xa3, 0x60, 0xda, 0x28, 0xa7, 0x30, 0x0d, 0x54, 0x37, 0x19, 0xfd, 0xf6,
+	0x78, 0xab, 0x9b, 0x6d, 0x80, 0xde, 0x54, 0xa4, 0x90, 0x1c, 0xba, 0x4f, 0xc5, 0x65, 0x5f, 0xdc,
+	0x07, 0x68, 0x35, 0xde, 0x41, 0x6c, 0x8f, 0xb5, 0x11, 0x96, 0x92, 0x7c, 0x51, 0xa6, 0x3c, 0xb0,
+	0xe2, 0x0c, 0xe9, 0xc7, 0xf4, 0x9b, 0xcb, 0x1e, 0x29, 0x24, 0x93, 0x7c, 0xd8, 0x53, 0x92, 0x93,
+	0x32, 0xe5, 0xbf, 0x14, 0x1f, 0x60, 0xd9, 0x0f, 0xd2, 0x9c, 0xe9, 0x75, 0x4e, 0xca, 0x55, 0x75,
+	0xc3, 0x42, 0xa6, 0x6e, 0xd8, 0xfb, 0xa8, 0x73, 0xff, 0x8c, 0x1b, 0x58, 0x5a, 0x57, 0x1b, 0x47,
+	0x17, 0x39, 0x29, 0x23, 0xee, 0xc9, 0xa8, 0xb6, 0x6a, 0xe8, 0x1c, 0x8d, 0x72, 0x52, 0xae, 0xb9,
+	0x27, 0xc5, 0xcb, 0x1c, 0x6d, 0x35, 0x3e, 0x42, 0x24, 0x54, 0xeb, 0xb7, 0x5b, 0x55, 0xb7, 0x17,
+	0xf3, 0xf7, 0xaa, 0x1d, 0x4e, 0xb2, 0x73, 0x7c, 0x32, 0x54, 0x6f, 0xb0, 0xdc, 0x89, 0xd3, 0x57,
+	0x87, 0x4f, 0x10, 0x8d, 0xc7, 0x21, 0xb2, 0xb9, 0x15, 0x16, 0x0e, 0xcf, 0xfe, 0x68, 0x56, 0x17,
+	0x57, 0xd5, 0x0e, 0x12, 0x1f, 0x28, 0xf0, 0x15, 0x62, 0x0f, 0x71, 0x73, 0x61, 0x9d, 0x9b, 0xc8,
+	0xfe, 0x51, 0xc7, 0x11, 0x4d, 0x3c, 0x75, 0xfc, 0xfc, 0x13, 0x00, 0x00, 0xff, 0xff, 0xd4, 0xbe,
+	0xab, 0x8e, 0x99, 0x01, 0x00, 0x00,
 }

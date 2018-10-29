@@ -9,8 +9,6 @@ service Admin {
 }
 
 service Searchd {
-    rpc IndexDoc (IndexDocReq) returns (IndexDocRsp) {}
-    rpc RemoveDoc (RemoveDocReq) returns (RemoveDocRsp) {}
     rpc Search (SearchReq) returns (SearchRsp) {}
 }
 
@@ -19,22 +17,6 @@ message InfoReq {
 
 message InfoRsp {
     repeated string shards = 1;
-}
-
-message IndexDocReq {
-    string shardID = 1;
-    xsearchpb.Document doc = 2;
-}
-
-message IndexDocRsp {
-}
-
-message RemoveDocReq {
-    string shardID = 1;
-    string docID = 2;
-}
-
-message RemoveDocRsp {
 }
 
 message SearchReq {
@@ -46,16 +28,4 @@ message SearchReq {
 
 message SearchRsp {
     repeated xsearchpb.Document docs = 1;
-}
-
-message Command {
-    enum Type {
-        INDEX = 0; 
-        REMOVE = 1;
-    } 
-    Type type = 1; 
-    oneof doc_oneof {
-        xsearchpb.Document doc = 2;
-        string docID = 3;
-    }
 }

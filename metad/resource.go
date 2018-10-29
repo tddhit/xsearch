@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	"github.com/tddhit/tools/log"
 	metadpb "github.com/tddhit/xsearch/metad/pb"
 )

@@ -1,7 +1,5 @@
 package types
 
-type DocumentID [16]byte
-
 type Posting struct {
 	next, prev *Posting
 

@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/golang/protobuf/proto"
 	uuid "github.com/satori/go.uuid"
 	"github.com/urfave/cli"
 	"google.golang.org/grpc/codes"
@@ -16,7 +17,9 @@ import (
 
 	"github.com/tddhit/box/mw"
 	"github.com/tddhit/box/transport"
+	"github.com/tddhit/diskqueue/pb"
 	"github.com/tddhit/tools/log"
+	"github.com/tddhit/xsearch/internal/util"
 	"github.com/tddhit/xsearch/metad/pb"
 	"github.com/tddhit/xsearch/pb"
 	"github.com/tddhit/xsearch/proxy/pb"
@@ -24,8 +27,9 @@ import (
 )
 
 type service struct {
-	metad    metadpb.MetadGrpcClient
 	resource *Resource
+	metad    metadpb.MetadGrpcClient
+	diskq    diskqueuepb.DiskqueueGrpcClient
 	exitC    chan struct{}
 }
 
@@ -33,18 +37,23 @@ func NewService(ctx *cli.Context, r *Resource) *service {
 	if !mw.IsWorker() {
 		return nil
 	}
-	metadAddr := ctx.String("metad")
-	namespaces := ctx.String("namespaces")
-	conn, err := transport.Dial(metadAddr)
+	conn, err := transport.Dial(ctx.String("metad"))
 	if err != nil {
 		log.Fatal(err)
 	}
+	metad := metadpb.NewMetadGrpcClient(conn)
+	conn, err = transport.Dial(ctx.String("diskqueue"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	diskq := diskqueuepb.NewDiskqueueGrpcClient(conn)
 	s := &service{
-		metad:    metadpb.NewMetadGrpcClient(conn),
 		resource: r,
+		metad:    metad,
+		diskq:    diskq,
 		exitC:    make(chan struct{}),
 	}
-	nss := strings.Split(namespaces, ",")
+	nss := strings.Split(ctx.String("namespaces"), ",")
 	for _, ns := range nss {
 		if err := s.registerClient(ns); err != nil {
 			log.Fatal(err)
@@ -131,17 +140,28 @@ func (s *service) IndexDoc(
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	key := hash(id[:])
+	key := util.Hash(id[:])
 	groupID := key % uint64(table.shardNum)
-	replicaID := key % uint64(table.replicaFactor)
-	shard, _ := table.getShard(int(groupID), int(replicaID))
-	_, err = shard.node.client.IndexDoc(ctx, &searchdpb.IndexDocReq{
-		ShardID: shard.id,
-		Doc:     req.Doc,
+	data, err := proto.Marshal(&xsearchpb.Command{
+		Type: xsearchpb.Command_INDEX,
+		DocOneof: &xsearchpb.Command_Doc{
+			Doc: &xsearchpb.Document{
+				ID:      id.String(),
+				Content: req.Doc.Content,
+			},
+		},
 	})
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	_, err = s.diskq.Push(context.Background(), &diskqueuepb.PushReq{
+		Topic: fmt.Sprintf("%s.%d", table.namespace, groupID),
+		Data:  data,
+	})
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	log.Debugf("index doc(%s) to shard(%s.%d)", id.String(), table.namespace, groupID)
 	return &proxypb.IndexDocRsp{DocID: id.String()}, nil
 }
 
@@ -153,17 +173,31 @@ func (s *service) RemoveDoc(
 	if !ok {
 		return nil, status.Error(codes.NotFound, req.Namespace)
 	}
-	key := hash([]byte(req.DocID))
+	id, err := uuid.FromString(req.DocID)
+	if err != nil {
+		log.Error(err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	key := util.Hash(id[:])
 	groupID := key % uint64(table.shardNum)
-	replicaID := key % uint64(table.replicaFactor)
-	shard, _ := table.getShard(int(groupID), int(replicaID))
-	_, err := shard.node.client.RemoveDoc(ctx, &searchdpb.RemoveDocReq{
-		ShardID: shard.id,
-		DocID:   req.DocID,
+	data, err := proto.Marshal(&xsearchpb.Command{
+		Type: xsearchpb.Command_REMOVE,
+		DocOneof: &xsearchpb.Command_DocID{
+			DocID: id.String(),
+		},
 	})
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	_, err = s.diskq.Push(context.Background(), &diskqueuepb.PushReq{
+		Topic: fmt.Sprintf("%s.%d", table.namespace, groupID),
+		Data:  data,
+	})
+	if err != nil {
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+	log.Debugf("remove doc(%s) to shard(%s.%d)",
+		id.String(), table.namespace, groupID)
 	return &proxypb.RemoveDocRsp{}, nil
 }
 
@@ -185,7 +219,7 @@ func (s *service) Search(
 			defer wg.Done()
 
 			var (
-				key       = hash([]byte(req.Query.Raw))
+				key       = util.Hash([]byte(req.Query.Raw))
 				replicaID = key % uint64(table.replicaFactor)
 				shard     *shard
 				tryCount  int
@@ -194,7 +228,7 @@ func (s *service) Search(
 				tryCount++
 				shard, _ = table.getShard(i, int(replicaID)%table.replicaFactor)
 				if shard.node.status == "online" {
-					log.Debug("connect", i, int(replicaID)%table.replicaFactor)
+					log.Debugf("search %s", shard.id)
 					break
 				}
 				replicaID++
@@ -215,6 +249,7 @@ func (s *service) Search(
 			rsps[i] = rsp
 		}(i)
 	}
+	wg.Wait()
 	docHeap := &DocHeap{}
 	heap.Init(docHeap)
 	for _, rsp := range rsps {

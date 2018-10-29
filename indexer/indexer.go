@@ -13,15 +13,16 @@ import (
 	"sync/atomic"
 	"time"
 
+	uuid "github.com/satori/go.uuid"
+
 	"github.com/tddhit/tools/log"
 	"github.com/tddhit/tools/mmap"
-	"github.com/tddhit/xsearch/indexer/option"
-	"github.com/tddhit/xsearch/indexer/segment"
-	xsearchpb "github.com/tddhit/xsearch/pb"
+	"github.com/tddhit/xsearch/internal/util"
+	"github.com/tddhit/xsearch/pb"
 )
 
 var (
-	defaultOptions = option.IndexerOptions{
+	defaultOptions = indexerOptions{
 		CommitNumDocs: 100000,
 		IndexDir:      "./",
 		Sharding:      runtime.NumCPU(),
@@ -29,10 +30,10 @@ var (
 )
 
 type Indexer struct {
-	opt            option.IndexerOptions
+	opt            indexerOptions
 	mu             []sync.RWMutex
 	segmentID      []int
-	segs           [][]*segment.Segment
+	segs           [][]*Segment
 	removeDocs     sync.Map // TODO: replace with bitmap
 	indexDocumentC []chan *xsearchpb.Document
 	indexRspC      []chan error
@@ -42,7 +43,7 @@ type Indexer struct {
 	persistWG      sync.WaitGroup
 }
 
-func New(opts ...option.IndexerOption) *Indexer {
+func New(opts ...IndexerOption) *Indexer {
 	ops := defaultOptions
 	for _, o := range opts {
 		o(&ops)
@@ -51,7 +52,7 @@ func New(opts ...option.IndexerOption) *Indexer {
 		opt:            ops,
 		mu:             make([]sync.RWMutex, ops.Sharding),
 		segmentID:      make([]int, ops.Sharding),
-		segs:           make([][]*segment.Segment, ops.Sharding),
+		segs:           make([][]*Segment, ops.Sharding),
 		indexDocumentC: make([]chan *xsearchpb.Document, ops.Sharding),
 		indexRspC:      make([]chan error, ops.Sharding),
 		exitC:          make(chan struct{}),
@@ -88,7 +89,7 @@ exit:
 	ticker.Stop()
 }
 
-func (idx *Indexer) createSegment(shardingID int) *segment.Segment {
+func (idx *Indexer) createSegment(shardingID int) *Segment {
 	idx.mu[shardingID].Lock()
 	vocabPath := fmt.Sprintf("%s/%d_%d_%d.vocab", idx.opt.IndexDir,
 		idx.opt.IndexID, shardingID, idx.segmentID[shardingID])
@@ -97,7 +98,7 @@ func (idx *Indexer) createSegment(shardingID int) *segment.Segment {
 	idx.segmentID[shardingID]++
 	idx.mu[shardingID].Unlock()
 
-	return segment.New(vocabPath, invertPath, mmap.CREATE, mmap.RANDOM)
+	return NewSegment(vocabPath, invertPath, mmap.CREATE, mmap.RANDOM)
 }
 
 func (idx *Indexer) loadSegments() {
@@ -140,7 +141,7 @@ func (idx *Indexer) loadSegments() {
 				log.Fatalf("%s is not exist.", invertPath)
 			}
 			idx.segs[k] = append(idx.segs[k],
-				segment.New(vocabPath, invertPath, mmap.RDONLY, mmap.RANDOM),
+				NewSegment(vocabPath, invertPath, mmap.RDONLY, mmap.RANDOM),
 			)
 		}
 		idx.segmentID[k] = len(v)
@@ -183,8 +184,13 @@ func (idx *Indexer) IndexDocument(doc *xsearchpb.Document) error {
 		return errors.New("Already Close.")
 	}
 
-	i := doc.GetID() % uint64(idx.opt.Sharding)
-	log.Infof("doc(%d) is indexed by segment(%d).", doc.GetID(), i)
+	id, err := uuid.FromString(doc.ID)
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+	i := util.Hash(id[:]) % uint64(idx.opt.Sharding)
+	log.Infof("doc(%s) is indexed by segment(%d).", doc.GetID(), i)
 	idx.indexDocumentC[i] <- doc
 	return <-idx.indexRspC[i]
 }
@@ -224,7 +230,7 @@ func (idx *Indexer) Search(query *xsearchpb.Query,
 	wg.Wait()
 	close(docsC)
 	for doc := range docsC {
-		if _, ok := idx.removeDocs.Load(doc.GetID()); ok {
+		if _, ok := idx.removeDocs.Load(doc.ID); ok {
 			continue
 		}
 		docs = append(docs, doc)
@@ -232,12 +238,12 @@ func (idx *Indexer) Search(query *xsearchpb.Query,
 	return docs, nil
 }
 
-func (idx *Indexer) copy() ([][]*segment.Segment, int32) {
+func (idx *Indexer) copy() ([][]*Segment, int32) {
 	count := int32(0)
-	segs := make([][]*segment.Segment, idx.opt.Sharding)
+	segs := make([][]*Segment, idx.opt.Sharding)
 	for i := range segs {
 		idx.mu[i].RLock()
-		segs[i] = make([]*segment.Segment, len(idx.segs[i]))
+		segs[i] = make([]*Segment, len(idx.segs[i]))
 		for j := range segs[i] {
 			segs[i][j] = idx.segs[i][j]
 			count++
@@ -258,7 +264,7 @@ func (idx *Indexer) persist(shardingID int) {
 	idx.mu[shardingID].Unlock()
 
 	idx.persistWG.Add(1)
-	go func(seg *segment.Segment) {
+	go func(seg *Segment) {
 		if err := seg.Persist(); err != nil {
 			log.Error(err)
 		}

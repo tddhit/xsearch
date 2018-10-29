@@ -1,12 +1,15 @@
 package searchd
 
 import (
+	"bufio"
 	"context"
 	"io"
+	"os"
+	"strings"
 	"time"
 
-	"github.com/gogo/protobuf/proto"
 	"github.com/urfave/cli"
+	"github.com/wangbin/jiebago"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -15,15 +18,18 @@ import (
 	"github.com/tddhit/diskqueue/pb"
 	"github.com/tddhit/tools/log"
 	"github.com/tddhit/xsearch/metad/pb"
+	"github.com/tddhit/xsearch/pb"
 	"github.com/tddhit/xsearch/searchd/pb"
 )
 
 type service struct {
-	addr     string
-	resource *Resource
-	metad    metadpb.MetadGrpcClient
-	diskq    diskqueuepb.DiskqueueGrpcClient
-	exitC    chan struct{}
+	addr      string
+	resource  *Resource
+	metad     metadpb.MetadGrpcClient
+	diskq     diskqueuepb.DiskqueueGrpcClient
+	segmenter *jiebago.Segmenter
+	stopwords map[string]struct{}
+	exitC     chan struct{}
 }
 
 func NewService(ctx *cli.Context, r *Resource) *service {
@@ -40,12 +46,35 @@ func NewService(ctx *cli.Context, r *Resource) *service {
 		log.Fatal(err)
 	}
 	diskq := diskqueuepb.NewDiskqueueGrpcClient(conn)
+	segmenter := &jiebago.Segmenter{}
+	if err := segmenter.LoadDictionary(ctx.String("dict")); err != nil {
+		log.Fatal(err)
+	}
+	if err := segmenter.LoadUserDictionary(ctx.String("userdict")); err != nil {
+		log.Fatal(err)
+	}
+	stopwords := make(map[string]struct{})
+	file, err := os.Open(ctx.String("stopdict"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+	rd := bufio.NewReader(file)
+	for {
+		line, err := rd.ReadString('\n')
+		if err != nil || io.EOF == err {
+			break
+		}
+		stopwords[strings.TrimSpace(line)] = struct{}{}
+	}
 	s := &service{
-		addr:     ctx.String("addr"),
-		resource: r,
-		metad:    metad,
-		diskq:    diskq,
-		exitC:    make(chan struct{}),
+		addr:      ctx.String("addr"),
+		resource:  r,
+		metad:     metad,
+		diskq:     diskq,
+		segmenter: segmenter,
+		stopwords: stopwords,
+		exitC:     make(chan struct{}),
 	}
 	if err := s.registerNode(s.addr); err != nil {
 		log.Fatal(err)
@@ -76,7 +105,13 @@ func (s *service) waitCommand(addr string, stream metadpb.Metad_RegisterNodeClie
 		switch rsp.Type {
 		case metadpb.RegisterNodeRsp_CreateShard:
 			log.Debug("create shard")
-			_, err := s.resource.createShard(rsp.ShardID, s.addr, s.diskq)
+			_, err := s.resource.createShard(
+				rsp.ShardID,
+				s.addr,
+				s.segmenter,
+				s.stopwords,
+				s.diskq,
+			)
 			if err != nil {
 				log.Error(err)
 				continue
@@ -131,56 +166,20 @@ exit:
 	ticker.Stop()
 }
 
-func (s *service) IndexDoc(ctx context.Context,
-	req *searchdpb.IndexDocReq) (*searchdpb.IndexDocRsp, error) {
-
-	log.Debug(req.Doc.Raw)
-	data, err := proto.Marshal(&searchdpb.Command{
-		Type: searchdpb.Command_INDEX,
-		DocOneof: &searchdpb.Command_Doc{
-			Doc: req.Doc,
-		},
-	})
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	log.Debug(len(data))
-	_, err = s.diskq.Push(context.Background(), &diskqueuepb.PushReq{
-		Topic: req.ShardID,
-		Data:  data,
-	})
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	return &searchdpb.IndexDocRsp{}, nil
-}
-
-func (s *service) RemoveDoc(ctx context.Context,
-	req *searchdpb.RemoveDocReq) (*searchdpb.RemoveDocRsp, error) {
-
-	data, err := proto.Marshal(&searchdpb.Command{
-		Type: searchdpb.Command_REMOVE,
-		DocOneof: &searchdpb.Command_DocID{
-			DocID: req.DocID,
-		},
-	})
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	_, err = s.diskq.Push(context.Background(), &diskqueuepb.PushReq{
-		Topic: req.ShardID,
-		Data:  data,
-	})
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	return &searchdpb.RemoveDocRsp{}, nil
-}
-
 func (s *service) Search(ctx context.Context,
 	req *searchdpb.SearchReq) (*searchdpb.SearchRsp, error) {
 
+	log.Debug("search", req.Query.Raw)
 	shard := ctx.Value(shardContextKey).(*shard)
+	for term := range s.segmenter.Cut(req.Query.Raw, true) {
+		if _, ok := s.stopwords[term]; !ok {
+			log.Debug(term)
+			req.Query.Tokens = append(
+				req.Query.Tokens,
+				&xsearchpb.Token{Term: term},
+			)
+		}
+	}
 	docs, err := shard.indexer.Search(req.Query, req.Start, int32(req.Count))
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())

@@ -34,6 +34,10 @@ var proxyCommand = cli.Command{
 			Usage: "metad addr",
 		},
 		cli.StringFlag{
+			Name:  "diskqueue",
+			Usage: "diskqueue addr",
+		},
+		cli.StringFlag{
 			Name:  "namespaces",
 			Usage: "Business name separated by a comma. i.e. faq,news",
 		},

@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 
-	"github.com/gogo/protobuf/jsonpb"
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/proto"
 	"github.com/urfave/cli"
 
 	"github.com/tddhit/box/transport"
@@ -37,8 +37,6 @@ info ->  node/namespace information, no args
 commit -> commit operation, require namespace
 
 searchd operation list:
-index -> build indexes, require shardid/content
-remove -> remove document from indexes, require shardid/docid
 search -> search query, require shardid/query/start/count
 info -> shards information, no args
 
@@ -86,7 +84,7 @@ info -> shard tables information, no args
 			Usage: "node address",
 		},
 		cli.StringFlag{
-			Name: "sharid",
+			Name: "shardid",
 		},
 		cli.StringFlag{
 			Name: "docid",
@@ -152,10 +150,6 @@ func connectSearchd(params *cli.Context, conn transport.ClientConn) {
 	client := searchdpb.NewSearchdGrpcClient(conn)
 	adminClient := searchdpb.NewAdminGrpcClient(conn)
 	switch params.Args().Get(1) {
-	case "index":
-		execSearchdIndex(params, client)
-	case "remove":
-		execSearchdRemove(params, client)
 	case "search":
 		execSearchdSearch(params, client)
 	case "info":
@@ -285,34 +279,6 @@ func execMetadCommit(params *cli.Context, client metadpb.MetadGrpcClient) {
 	}
 }
 
-func execSearchdIndex(params *cli.Context, client searchdpb.SearchdGrpcClient) {
-	_, err := client.IndexDoc(
-		context.Background(),
-		&searchdpb.IndexDocReq{
-			ShardID: params.String("shardid"),
-			Doc: &xsearchpb.Document{
-				Raw: params.String("content"),
-			},
-		},
-	)
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-func execSearchdRemove(params *cli.Context, client searchdpb.SearchdGrpcClient) {
-	_, err := client.RemoveDoc(
-		context.Background(),
-		&searchdpb.RemoveDocReq{
-			ShardID: params.String("shardid"),
-			DocID:   params.String("docid"),
-		},
-	)
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
 func execSearchdSearch(params *cli.Context, client searchdpb.SearchdGrpcClient) {
 	rsp, err := client.Search(
 		context.Background(),
@@ -348,7 +314,7 @@ func execProxyIndex(params *cli.Context, client proxypb.ProxyGrpcClient) {
 		&proxypb.IndexDocReq{
 			Namespace: params.String("namespace"),
 			Doc: &xsearchpb.Document{
-				Raw: params.String("content"),
+				Content: params.String("content"),
 			},
 		},
 	)

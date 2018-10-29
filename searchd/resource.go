@@ -7,6 +7,7 @@ import (
 
 	"github.com/tddhit/diskqueue/pb"
 	"github.com/tddhit/xsearch/searchd/pb"
+	"github.com/wangbin/jiebago"
 )
 
 var (
@@ -37,7 +38,9 @@ func (r *Resource) getShard(id string) (*shard, bool) {
 
 func (r *Resource) createShard(
 	id string,
-	channel string,
+	addr string,
+	segmenter *jiebago.Segmenter,
+	stopwords map[string]struct{},
 	c diskqueuepb.DiskqueueGrpcClient) (*shard, error) {
 
 	r.Lock()
@@ -46,7 +49,10 @@ func (r *Resource) createShard(
 	if s, ok := r.shards[id]; ok {
 		return s, errAlreadyExists
 	}
-	s := newShard(id, path.Join(r.dir, id), channel, c)
+	s, err := newShard(id, path.Join(r.dir, id), addr, segmenter, stopwords, c)
+	if err != nil {
+		return nil, err
+	}
 	r.shards[id] = s
 	return s, nil
 }

@@ -7,7 +7,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	"github.com/tddhit/tools/log"
 
 	"github.com/tddhit/xsearch/metad/pb"

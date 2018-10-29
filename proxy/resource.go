@@ -3,7 +3,7 @@ package proxy
 import (
 	"sync"
 
-	"github.com/gogo/protobuf/jsonpb"
+	"github.com/golang/protobuf/jsonpb"
 
 	"github.com/tddhit/xsearch/proxy/pb"
 )
