@@ -6,7 +6,7 @@ type indexerOptions struct {
 	CommitNumDocs      uint64
 	CommitTimeInterval time.Duration
 	IndexDir           string
-	IndexID            int
+	IndexID            string
 	Sharding           int
 }
 
@@ -30,7 +30,7 @@ func WithIndexDir(path string) IndexerOption {
 	}
 }
 
-func WithIndexID(id int) IndexerOption {
+func WithIndexID(id string) IndexerOption {
 	return func(o *indexerOptions) {
 		o.IndexID = id
 	}

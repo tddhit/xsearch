@@ -1,6 +1,7 @@
 package indexer
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -15,6 +16,7 @@ import (
 
 	uuid "github.com/satori/go.uuid"
 
+	"github.com/tddhit/bindex"
 	"github.com/tddhit/tools/log"
 	"github.com/tddhit/tools/mmap"
 	"github.com/tddhit/xsearch/internal/util"
@@ -30,17 +32,17 @@ var (
 )
 
 type Indexer struct {
-	opt            indexerOptions
-	mu             []sync.RWMutex
-	segmentID      []int
-	segs           [][]*Segment
-	removeDocs     sync.Map // TODO: replace with bitmap
-	indexDocumentC []chan *xsearchpb.Document
-	indexRspC      []chan error
-	exitC          chan struct{}
-	exitMu         sync.RWMutex
-	exitFlag       int32
-	persistWG      sync.WaitGroup
+	opt        indexerOptions
+	mu         []sync.RWMutex
+	segmentID  int32
+	segs       [][]*Segment
+	removeDocs sync.Map // TODO: replace with bitmap
+	indexDocC  []chan *xsearchpb.Document
+	indexRspC  []chan error
+	exitC      chan struct{}
+	exitMu     sync.RWMutex
+	exitFlag   int32
+	persistWG  sync.WaitGroup
 }
 
 func New(opts ...IndexerOption) *Indexer {
@@ -49,13 +51,12 @@ func New(opts ...IndexerOption) *Indexer {
 		o(&ops)
 	}
 	idx := &Indexer{
-		opt:            ops,
-		mu:             make([]sync.RWMutex, ops.Sharding),
-		segmentID:      make([]int, ops.Sharding),
-		segs:           make([][]*Segment, ops.Sharding),
-		indexDocumentC: make([]chan *xsearchpb.Document, ops.Sharding),
-		indexRspC:      make([]chan error, ops.Sharding),
-		exitC:          make(chan struct{}),
+		opt:       ops,
+		mu:        make([]sync.RWMutex, ops.Sharding),
+		segs:      make([][]*Segment, ops.Sharding),
+		indexDocC: make([]chan *xsearchpb.Document, ops.Sharding),
+		indexRspC: make([]chan error, ops.Sharding),
+		exitC:     make(chan struct{}),
 	}
 	if err := os.MkdirAll(idx.opt.IndexDir, 0755); err != nil && !os.IsExist(err) {
 		log.Error(err)
@@ -64,9 +65,9 @@ func New(opts ...IndexerOption) *Indexer {
 	idx.loadSegments()
 	for i := 0; i < int(idx.opt.Sharding); i++ {
 		idx.mu[i] = sync.RWMutex{}
-		idx.indexDocumentC[i] = make(chan *xsearchpb.Document)
+		idx.indexDocC[i] = make(chan *xsearchpb.Document)
 		idx.indexRspC[i] = make(chan error)
-		idx.segs[i] = append(idx.segs[i], idx.createSegment(i))
+		idx.segs[i] = append(idx.segs[i], idx.createSegment())
 		go idx.indexLoop(i)
 	}
 	if idx.opt.CommitTimeInterval > 0 {
@@ -89,53 +90,48 @@ exit:
 	ticker.Stop()
 }
 
-func (idx *Indexer) createSegment(shardingID int) *Segment {
-	idx.mu[shardingID].Lock()
-	vocabPath := fmt.Sprintf("%s/%d_%d_%d.vocab", idx.opt.IndexDir,
-		idx.opt.IndexID, shardingID, idx.segmentID[shardingID])
-	invertPath := fmt.Sprintf("%s/%d_%d_%d.invert", idx.opt.IndexDir,
-		idx.opt.IndexID, shardingID, idx.segmentID[shardingID])
-	idx.segmentID[shardingID]++
-	idx.mu[shardingID].Unlock()
+func (idx *Indexer) createSegment() *Segment {
+	vocabPath := fmt.Sprintf("%s/%d_%d.vocab", idx.opt.IndexDir,
+		idx.opt.IndexID, idx.segmentID)
+	invertPath := fmt.Sprintf("%s/%d_%d.invert", idx.opt.IndexDir,
+		idx.opt.IndexID, idx.segmentID)
+	atomic.AddInt32(&idx.segmentID, 1)
 
 	return NewSegment(vocabPath, invertPath, mmap.CREATE, mmap.RANDOM)
 }
 
 func (idx *Indexer) loadSegments() {
 	id := make(map[int][]int, idx.opt.Sharding)
+	shardingID := 0
 	filepath.Walk(idx.opt.IndexDir,
 		func(path string, info os.FileInfo, err error) error {
 			if strings.HasSuffix(info.Name(), ".vocab") {
 				name := info.Name()
 				s := strings.Split(name[:len(name)-6], "_")
-				if len(s) != 3 {
+				if len(s) != 2 {
 					log.Fatalf("Invalid vocab/invert filename:%s", name)
 				}
-				indexID, err := strconv.Atoi(s[0])
+				indexID := s[0]
 				if indexID != idx.opt.IndexID {
-					log.Fatalf("Find a different segment, indexID is %d not %d",
+					log.Fatalf("Find a different segment, indexID is %s not %s",
 						indexID, idx.opt.IndexID)
 				}
-				shardingID, err := strconv.Atoi(s[1])
-				if shardingID > int(idx.opt.Sharding)-1 {
-					log.Fatalf("Invalid shardingID (%d), sharding number is %d",
-						shardingID, idx.opt.Sharding)
-				}
-				segmentID, err := strconv.Atoi(s[2])
+				segmentID, err := strconv.Atoi(s[1])
 				if err != nil {
 					log.Fatal(err)
 				}
-				id[shardingID] = append(id[shardingID], segmentID)
+				id[shardingID%idx.opt.Sharding] = append(id[shardingID], segmentID)
+				shardingID++
 			}
 			return nil
 		})
 	for k, v := range id {
 		sort.Ints(v)
 		for i := range v {
-			vocabPath := fmt.Sprintf("%s/%d_%d_%d.vocab", idx.opt.IndexDir,
-				idx.opt.IndexID, k, v[i])
-			invertPath := fmt.Sprintf("%s/%d_%d_%d.invert", idx.opt.IndexDir,
-				idx.opt.IndexID, k, v[i])
+			vocabPath := fmt.Sprintf("%s/%s_%d.vocab", idx.opt.IndexDir,
+				idx.opt.IndexID, v[i])
+			invertPath := fmt.Sprintf("%s/%s_%d.invert", idx.opt.IndexDir,
+				idx.opt.IndexID, v[i])
 			_, err := os.Stat(invertPath)
 			if err != nil && os.IsNotExist(err) {
 				log.Fatalf("%s is not exist.", invertPath)
@@ -143,15 +139,17 @@ func (idx *Indexer) loadSegments() {
 			idx.segs[k] = append(idx.segs[k],
 				NewSegment(vocabPath, invertPath, mmap.RDONLY, mmap.RANDOM),
 			)
+			if idx.segmentID < int32(v[i]) {
+				idx.segmentID = int32(v[i])
+			}
 		}
-		idx.segmentID[k] = len(v)
 	}
 }
 
 func (idx *Indexer) indexLoop(shardingID int) {
 	for {
 		select {
-		case doc := <-idx.indexDocumentC[shardingID]:
+		case doc := <-idx.indexDocC[shardingID]:
 			idx.indexRspC[shardingID] <- idx.indexOne(shardingID, doc)
 		}
 	}
@@ -191,7 +189,7 @@ func (idx *Indexer) IndexDocument(doc *xsearchpb.Document) error {
 	}
 	i := util.Hash(id[:]) % uint64(idx.opt.Sharding)
 	log.Infof("doc(%s) is indexed by segment(%d).", doc.GetID(), i)
-	idx.indexDocumentC[i] <- doc
+	idx.indexDocC[i] <- doc
 	return <-idx.indexRspC[i]
 }
 
@@ -254,7 +252,7 @@ func (idx *Indexer) copy() ([][]*Segment, int32) {
 }
 
 func (idx *Indexer) persist(shardingID int) {
-	newSeg := idx.createSegment(shardingID)
+	newSeg := idx.createSegment()
 
 	idx.mu[shardingID].Lock()
 	segs := idx.segs[shardingID]
@@ -271,6 +269,7 @@ func (idx *Indexer) persist(shardingID int) {
 		idx.persistWG.Done()
 	}(oldSeg)
 }
+
 func (idx *Indexer) persistAll() {
 	idx.exitMu.RLock()
 	defer idx.exitMu.RUnlock()
@@ -282,6 +281,74 @@ func (idx *Indexer) persistAll() {
 	for i := 0; i < idx.opt.Sharding; i++ {
 		idx.persist(i)
 	}
+}
+
+func (idx *Indexer) mergeSegments() {
+	var (
+		numDocs   uint64
+		needMerge []*Segment
+	)
+	segs, _ := idx.copy()
+	for i := range segs {
+		for j := range segs[i] {
+			if atomic.LoadInt32(&segs[i][j].persist) == 1 {
+				if segs[i][j].NumDocs < idx.opt.CommitNumDocs {
+					if numDocs+segs[i][j].NumDocs < idx.opt.CommitNumDocs {
+						numDocs += segs[i][j].NumDocs
+						needMerge = append(needMerge, segs[i][j])
+					} else {
+						idx.merge(needMerge)
+						numDocs = 0
+						needMerge = needMerge[:0]
+					}
+				}
+			}
+		}
+	}
+}
+
+type kv struct {
+	key   []byte
+	value []byte
+}
+
+func (idx *Indexer) merge(segs []*Segment) *Segment {
+	newSeg := idx.createSegment()
+	cursors := make([]*bindex.Cursor, len(segs))
+	min, max := &kv{}, &kv{}
+	for _, seg := range segs {
+		c := seg.vocab.NewCursor()
+		k, v := c.First()
+		if bytes.Compare(k, min.key) < 0 {
+			min = &kv{k, v}
+		}
+		if bytes.Compare(k, max.key) > 0 {
+			max = &kv{k, v}
+		}
+	}
+	input := func(i int) interface{} {
+		if cursors[i] == nil {
+			cursors[i] = segs[i].vocab.NewCursor()
+			k, v := cursors[i].First()
+			return &kv{
+				key:   k,
+				value: v,
+			}
+		}
+		k, v := cursors[i].Next()
+		return &kv{
+			key:   k,
+			value: v,
+		}
+	}
+	output := func(i interface{}) {
+		newSeg.vocab.Put(i.(*kv).key, i.(*kv).value)
+	}
+	compare := func(a, b interface{}) int {
+		return bytes.Compare(a.(*kv).key, b.(*kv).value)
+	}
+	util.KMerge(len(segs), min, max, input, output, compare)
+	return newSeg
 }
 
 func (idx *Indexer) Close() {

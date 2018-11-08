@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 
 	uuid "github.com/satori/go.uuid"
+
 	"github.com/tddhit/bindex"
 	"github.com/tddhit/tools/log"
 	"github.com/tddhit/tools/mmap"
