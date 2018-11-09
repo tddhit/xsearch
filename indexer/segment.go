@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"math"
+	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -37,7 +38,7 @@ func init() {
 	}
 }
 
-type Segment struct {
+type segment struct {
 	mu          sync.RWMutex
 	name        string
 	NumDocs     uint64
@@ -47,29 +48,34 @@ type Segment struct {
 	invertList  map[string]*types.PostingList
 	vocab       *bindex.BIndex
 	invert      *mmap.MmapFile
+	vocabPath   string
+	invertPath  string
 	persist     int32
+	recycle     bool
 }
 
-func NewSegment(vocabPath, invertPath string, mode, advise int) *Segment {
-	vocab, err := bindex.New(vocabPath, mode, advise)
+func newSegment(vocabPath, invertPath string, mode int) (*segment, error) {
+	vocab, err := bindex.New(vocabPath, mode, mmap.ADVISE_RANDOM)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
+		return nil, err
 	}
-	invert, err := mmap.New(invertPath, maxMapSize, mode, advise)
+	invert, err := mmap.New(invertPath, maxMapSize, mode, mmap.ADVISE_RANDOM)
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err)
+		return nil, err
 	}
 	s := strings.Split(vocabPath, "/")
-	return &Segment{
+	return &segment{
 		name:       s[len(s)-1],
 		docsLength: make(map[string]uint32),
 		invertList: make(map[string]*types.PostingList),
 		vocab:      vocab,
 		invert:     invert,
-	}
+	}, nil
 }
 
-func (s *Segment) IndexDocument(doc *xsearchpb.Document) error {
+func (s *segment) indexDocument(doc *xsearchpb.Document) error {
 	var (
 		loc     uint32
 		posting *types.Posting
@@ -103,7 +109,7 @@ func (s *Segment) IndexDocument(doc *xsearchpb.Document) error {
 	return nil
 }
 
-func (s *Segment) Search(query *xsearchpb.Query,
+func (s *segment) search(query *xsearchpb.Query,
 	start uint64, count int32) (docs []*xsearchpb.Document, err error) {
 
 	doc2BM25 := make(map[string]float32)
@@ -133,7 +139,7 @@ func (s *Segment) Search(query *xsearchpb.Query,
 	return
 }
 
-func (s *Segment) lookup(key []byte, doc2BM25 map[string]float32) error {
+func (s *segment) lookup(key []byte, doc2BM25 map[string]float32) error {
 	value := s.vocab.Get(key)
 	if value == nil {
 		log.Error(s.name, errNotFoundKey, string(key))
@@ -167,7 +173,7 @@ func (s *Segment) lookup(key []byte, doc2BM25 map[string]float32) error {
 	return nil
 }
 
-func (s *Segment) Persist() error {
+func (s *segment) persistData() error {
 	if !atomic.CompareAndSwapInt32(&s.persist, 0, 1) {
 		return errors.New("Already persist.")
 	}
@@ -206,7 +212,29 @@ func (s *Segment) Persist() error {
 	return nil
 }
 
-func (s *Segment) Close() {
+func (s *segment) delete() error {
+	if s.vocab != nil {
+		if err := s.vocab.Close(); err != nil {
+			return err
+		}
+		if err := os.Remove(s.vocabPath); err != nil {
+			return err
+		}
+		s.vocab = nil
+	}
+	if s.invert != nil {
+		if err := s.invert.Close(); err != nil {
+			return err
+		}
+		if err := os.Remove(s.invertPath); err != nil {
+			return err
+		}
+		s.invert = nil
+	}
+	return nil
+}
+
+func (s *segment) close() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

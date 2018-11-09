@@ -3,7 +3,7 @@ package util
 func KMerge(
 	k int, min, max interface{},
 	input func(i int) interface{},
-	output func(k interface{}),
+	output func(k interface{}) error,
 	compare func(a, b interface{}) int) {
 
 	t := &loserTree{
@@ -14,7 +14,7 @@ func KMerge(
 		output:  output,
 		compare: compare,
 		b:       make([]interface{}, k+1),
-		ls:      make([]int, k),
+		ls:      make([]int, k+1),
 	}
 	t.merge()
 }
@@ -24,7 +24,7 @@ type loserTree struct {
 	min     interface{}
 	max     interface{}
 	input   func(i int) interface{}
-	output  func(k interface{})
+	output  func(k interface{}) error
 	compare func(a, b interface{}) int
 	b       []interface{}
 	ls      []int
@@ -51,15 +51,22 @@ func (t *loserTree) adjust(s int) {
 	t.ls[0] = s
 }
 
-func (t *loserTree) merge() {
+func (t *loserTree) merge() (err error) {
 	for i := 0; i < t.k; i++ {
 		t.b[i] = t.input(i)
+		if err != nil {
+			return
+		}
 	}
 	t.build()
 	for t.compare(t.b[t.ls[0]], t.max) != 0 {
 		q := t.ls[0]
-		t.output(t.b[q])
+		err = t.output(t.b[q])
+		if err != nil {
+			return
+		}
 		t.b[q] = t.input(q)
 		t.adjust(q)
 	}
+	return
 }

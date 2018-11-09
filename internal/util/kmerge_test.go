@@ -7,40 +7,43 @@ import (
 
 const (
 	K   = 5
-	MIN = "a"
-	MAX = "z"
+	MIN = ""
+	MAX = "y0"
 )
 
 type foo struct {
-	v [][]key
+	v [][]interface{}
 	i []int
 }
 
 func TestKMerge(t *testing.T) {
 	f := &foo{
-		v: make([][]key, K),
+		v: make([][]interface{}, K),
 		i: make([]int, K),
 	}
-	f.v[0] = []key{key("a"), key("f"), key("k"), key("p"), key("u")}
-	f.v[1] = []key{key("b"), key("g"), key("l"), key("q"), key("v")}
-	f.v[2] = []key{key("c"), key("h"), key("m"), key("r"), key("w")}
-	f.v[3] = []key{key("d"), key("i"), key("n"), key("s"), key("x")}
-	f.v[4] = []key{key("e"), key("j"), key("o"), key("t"), key("y")}
-	input := func(i int) key {
+	f.v[0] = []interface{}{interface{}("a"), interface{}("f"), interface{}("k"), interface{}("p"), interface{}("u")}
+	f.v[1] = []interface{}{interface{}("-1"), interface{}("g"), interface{}("l"), interface{}("q"), interface{}("v")}
+	f.v[2] = []interface{}{interface{}("-2"), interface{}("h"), interface{}("m"), interface{}("r"), interface{}("w")}
+	f.v[3] = []interface{}{interface{}("d"), interface{}("i"), interface{}("n"), interface{}("s"), interface{}("x")}
+	f.v[4] = []interface{}{interface{}("e"), interface{}("j"), interface{}("o"), interface{}("t"), interface{}("y")}
+	input := func(i int) interface{} {
+		if i >= K {
+			return interface{}(MAX)
+		}
 		if f.i[i] < K {
 			k := f.v[i][f.i[i]]
 			f.i[i]++
 			return k
 		} else {
-			return key(MAX)
+			return interface{}(MAX)
 		}
 	}
-	output := func(k key) {
-		print(string(k))
+	output := func(k interface{}) {
+		println(k.(string))
 	}
-	compare := func(a, b key) int {
-		return bytes.Compare(a, b)
+	compare := func(a, b interface{}) int {
+		return bytes.Compare([]byte(a.(string)), []byte(b.(string)))
 	}
-	KMerge(K, key(MIN), key(MAX), input, output, compare)
+	KMerge(K, interface{}(MIN), interface{}(MAX), input, output, compare)
 	println()
 }

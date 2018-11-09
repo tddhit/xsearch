@@ -3,41 +3,48 @@ package indexer
 import "time"
 
 type indexerOptions struct {
-	CommitNumDocs      uint64
-	CommitTimeInterval time.Duration
-	IndexDir           string
-	IndexID            string
-	Sharding           int
+	persistNum      uint64
+	persistInterval time.Duration
+	mergeInterval   time.Duration
+	dir             string
+	id              string
+	shardNum        int
 }
 
 type IndexerOption func(*indexerOptions)
 
-func WithCommitNumDocs(n int) IndexerOption {
+func WithPersistNum(n int) IndexerOption {
 	return func(o *indexerOptions) {
-		o.CommitNumDocs = uint64(n)
+		o.persistNum = uint64(n)
 	}
 }
 
-func WithCommitTimeInverval(t time.Duration) IndexerOption {
+func WithPersistInverval(t time.Duration) IndexerOption {
 	return func(o *indexerOptions) {
-		o.CommitTimeInterval = t
+		o.persistInterval = t
 	}
 }
 
-func WithIndexDir(path string) IndexerOption {
+func WithMergeInterval(t time.Duration) IndexerOption {
 	return func(o *indexerOptions) {
-		o.IndexDir = path
+		o.mergeInterval = t
 	}
 }
 
-func WithIndexID(id string) IndexerOption {
+func WithDir(dir string) IndexerOption {
 	return func(o *indexerOptions) {
-		o.IndexID = id
+		o.dir = dir
 	}
 }
 
-func WithSharding(num int) IndexerOption {
+func WithID(id string) IndexerOption {
 	return func(o *indexerOptions) {
-		o.Sharding = num
+		o.id = id
+	}
+}
+
+func WithShardNum(num int) IndexerOption {
+	return func(o *indexerOptions) {
+		o.shardNum = num
 	}
 }

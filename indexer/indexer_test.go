@@ -3,6 +3,7 @@ package indexer
 import (
 	"bufio"
 	"encoding/binary"
+	"fmt"
 	"math"
 	"net/http"
 	_ "net/http/pprof"
@@ -13,6 +14,7 @@ import (
 	"testing"
 	"unsafe"
 
+	uuid "github.com/satori/go.uuid"
 	"github.com/tddhit/tools/log"
 	"github.com/tddhit/tools/mmap"
 	"github.com/tddhit/xsearch/pb"
@@ -262,4 +264,29 @@ func TestWriteMmap2(t *testing.T) {
 	log.Info(loc)
 	file.Sync()
 	log.Info("End")
+}
+
+func TestMergeSegments(t *testing.T) {
+	var N = 2
+	segs := make([]*Segment, N)
+	for i := 0; i < N; i++ {
+		vocabPath := fmt.Sprintf("%s_%d.vocab", "test", i)
+		invertPath := fmt.Sprintf("%s_%d.invert", "test", i)
+		segs[i] = NewSegment(vocabPath, invertPath, mmap.CREATE, mmap.RANDOM)
+		for j := i * 1000; j < (i+1)*1000; j++ {
+			id, _ := uuid.NewV4()
+			segs[i].IndexDocument(&xsearchpb.Document{
+				ID: id.String(),
+				Tokens: []xsearchpb.Token{
+					{
+						Term: "linux",
+					},
+					{
+						Term: "go",
+					},
+				},
+			})
+		}
+	}
+
 }
