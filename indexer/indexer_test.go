@@ -3,7 +3,6 @@ package indexer
 import (
 	"bufio"
 	"encoding/binary"
-	"fmt"
 	"math"
 	"net/http"
 	_ "net/http/pprof"
@@ -12,17 +11,19 @@ import (
 	"sync"
 	"syscall"
 	"testing"
+	"time"
 	"unsafe"
 
 	uuid "github.com/satori/go.uuid"
 	"github.com/tddhit/tools/log"
 	"github.com/tddhit/tools/mmap"
 	"github.com/tddhit/xsearch/pb"
+	"github.com/wangbin/jiebago"
 )
 
 func TestSearch(t *testing.T) {
 	log.Init("test/indexer.log", log.ERROR)
-	indexer := New(WithIndexDir("./test/"))
+	indexer, _ := New(WithDir("./test/"))
 	tokens := []*xsearchpb.Token{
 		&xsearchpb.Token{Term: "Linux"},
 		&xsearchpb.Token{Term: "Go"},
@@ -72,7 +73,7 @@ func TestIndex(t *testing.T) {
 			}
 		}
 	}
-	indexer := New(WithIndexDir("./test/"))
+	indexer, _ := New(WithDir("./test/"))
 	var wg sync.WaitGroup
 	for i := 0; i < sharding; i++ {
 		wg.Add(1)
@@ -242,7 +243,7 @@ func TestWriteFile(t *testing.T) {
 }
 
 func TestWriteMmap2(t *testing.T) {
-	file, err := mmap.New("test/1_0_0.invert", 1<<30, mmap.CREATE, mmap.RANDOM)
+	file, err := mmap.New("test/1_0_0.invert", 1<<30, mmap.MODE_CREATE, mmap.ADVISE_RANDOM)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -267,26 +268,71 @@ func TestWriteMmap2(t *testing.T) {
 }
 
 func TestMergeSegments(t *testing.T) {
-	var N = 2
-	segs := make([]*Segment, N)
-	for i := 0; i < N; i++ {
-		vocabPath := fmt.Sprintf("%s_%d.vocab", "test", i)
-		invertPath := fmt.Sprintf("%s_%d.invert", "test", i)
-		segs[i] = NewSegment(vocabPath, invertPath, mmap.CREATE, mmap.RANDOM)
-		for j := i * 1000; j < (i+1)*1000; j++ {
-			id, _ := uuid.NewV4()
-			segs[i].IndexDocument(&xsearchpb.Document{
-				ID: id.String(),
-				Tokens: []xsearchpb.Token{
-					{
-						Term: "linux",
-					},
-					{
-						Term: "go",
-					},
-				},
-			})
-		}
+	log.Init("", log.INFO)
+	idx, _ := New(
+		WithDir("./test"),
+		WithMergeInterval(10*time.Second),
+		WithPersistInterval(2*time.Second),
+		WithShardNum(1),
+	)
+	segmenter := &jiebago.Segmenter{}
+	if err := segmenter.LoadDictionary("../cmd/xsearch/dict/segment.dict"); err != nil {
+		log.Fatal(err)
 	}
-
+	docs := []string{
+		"我是一个程序员",
+		"我是一个linux程序员",
+		"我是一个golang程序员",
+		"我是一个算法工程师",
+		"我是一个服务端工程师",
+		"我是一个做深度学习算法的工程师",
+	}
+	for i, content := range docs {
+		id, _ := uuid.NewV4()
+		doc := &xsearchpb.Document{ID: id.String()}
+		for term := range segmenter.Cut(content, true) {
+			doc.Tokens = append(
+				doc.Tokens,
+				&xsearchpb.Token{Term: term},
+			)
+		}
+		if err := idx.IndexDocument(doc); err != nil {
+			log.Error(err)
+		}
+		log.Infof("index doc id=%s content=%s", doc.ID, docs[i])
+		time.Sleep(time.Second)
+	}
+	time.Sleep(2 * time.Second)
+	log.Info("----------------")
+	res, err := idx.Search(&xsearchpb.Query{
+		Tokens: []*xsearchpb.Token{
+			{Term: "程序员"},
+		},
+	}, 0, 10)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, doc := range res {
+		log.Info(doc.ID, doc.BM25Score)
+	}
+	time.Sleep(10 * time.Second)
+	log.Info("----------------")
+	res, err = idx.Search(&xsearchpb.Query{
+		Tokens: []*xsearchpb.Token{
+			{Term: "程序员"},
+		},
+	}, 0, 10)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, doc := range res {
+		log.Info(doc.ID, doc.BM25Score)
+	}
+	log.Info("close")
+	go func() {
+		if err := http.ListenAndServe(":12345", nil); err != nil {
+			log.Fatal(err)
+		}
+	}()
+	idx.Close()
 }

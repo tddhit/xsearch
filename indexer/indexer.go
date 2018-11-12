@@ -35,6 +35,7 @@ var (
 )
 
 type Indexer struct {
+	sync.RWMutex
 	opt        indexerOptions
 	shards     [][]*segment
 	shardLocks []sync.RWMutex
@@ -158,8 +159,12 @@ func (idx *Indexer) indexLoop(shardID int) {
 		select {
 		case doc := <-idx.indexDocC[shardID]:
 			idx.indexRspC[shardID] <- idx.indexOne(shardID, doc)
+		case <-idx.exitC:
+			goto exit
 		}
 	}
+exit:
+	idx.wg.Done()
 }
 
 func (idx *Indexer) indexOne(shardID int, doc *xsearchpb.Document) error {
@@ -193,7 +198,7 @@ func (idx *Indexer) IndexDocument(doc *xsearchpb.Document) error {
 		return err
 	}
 	i := util.Hash(id[:]) % uint64(idx.opt.shardNum)
-	log.Infof("doc(%s) is indexed by segment(%d).", doc.GetID(), i)
+	log.Infof("doc(%s) is indexed by shard(%d).", doc.GetID(), i)
 	idx.indexDocC[i] <- doc
 	return <-idx.indexRspC[i]
 }
@@ -257,7 +262,11 @@ func (idx *Indexer) copy() ([][]*segment, int32) {
 }
 
 func (idx *Indexer) persist(shardID int) error {
+	idx.RLock()
+	defer idx.RUnlock()
+
 	segID := atomic.AddInt32(&idx.segmentID, 1)
+	log.Infof("open segment %d", segID)
 	newSeg, err := idx.openSegment(mmap.MODE_CREATE, segID)
 	if err != nil {
 		return err
@@ -267,6 +276,7 @@ func (idx *Indexer) persist(shardID int) error {
 	oldSeg := segs[len(segs)-1]
 	// Use idx.shards to avoid append allocation of new variables
 	idx.shards[shardID] = append(idx.shards[shardID], newSeg)
+	log.Debugf("oldseg %s, len %d", oldSeg.name, len(idx.shards[shardID]))
 	idx.shardLocks[shardID].Unlock()
 
 	idx.wg.Add(1)
@@ -297,19 +307,33 @@ func (idx *Indexer) mergeSegments() {
 		needMerge []*segment
 		newSegs   []*segment
 	)
-	shards, _ := idx.copy()
-	for _, segs := range shards {
-		for _, seg := range segs {
-			if atomic.LoadInt32(&seg.persist) == 0 {
-				continue
+	shards, n := idx.copy()
+	log.Debugf("merge len %d", n)
+	for i, segs := range shards {
+		for j, seg := range segs {
+			merge := false
+			if atomic.LoadInt32(&seg.persist) == 1 {
+				if seg.NumDocs > 0 && seg.NumDocs < idx.opt.persistNum {
+					seg.recycle = true
+					needMerge = append(needMerge, seg)
+					numDocs += seg.NumDocs
+				} else if seg.NumDocs == 0 {
+					seg.recycle = true
+				}
 			}
-			if seg.NumDocs >= idx.opt.persistNum {
-				continue
-			}
-			seg.recycle = true
-			needMerge = append(needMerge, seg)
-			numDocs += seg.NumDocs
 			if numDocs >= idx.opt.persistNum {
+				merge = true
+			}
+			log.Info("seg", i, j, len(shards)-1, len(segs)-1, seg.NumDocs, numDocs)
+			if i == len(shards)-1 && j == len(segs)-1 {
+				if len(needMerge) > 1 {
+					merge = true
+				} else if len(needMerge) == 1 {
+					needMerge[0].recycle = false
+				}
+			}
+			if merge {
+				log.Info("merge", needMerge)
 				newSeg, err := idx.merge(needMerge)
 				if err != nil {
 					log.Error(err)
@@ -321,18 +345,24 @@ func (idx *Indexer) mergeSegments() {
 			}
 		}
 	}
+	log.Debugf("newSegs len %d", len(newSegs))
 	idx.shardBalance(newSegs)
 }
 
 func (idx *Indexer) shardBalance(newSegs []*segment) {
+	idx.Lock()
+	defer idx.Unlock()
+
+	log.Debugf("balance len %d", len(idx.shards[0]))
 	newShards := make([][]*segment, idx.opt.shardNum)
-	shards, _ := idx.copy()
 	i := 0
-	for _, segs := range shards {
+	for _, segs := range idx.shards {
 		for _, seg := range segs {
 			if seg.recycle {
+				log.Infof("segment %s delete", seg.name)
 				seg.delete()
 			} else {
+				log.Infof("segment %s add", seg.name)
 				newShards[i] = append(newShards[i], seg)
 				i = (i + 1) % idx.opt.shardNum
 			}
@@ -359,28 +389,36 @@ func (idx *Indexer) merge(segs []*segment) (*segment, error) {
 	)
 	for _, seg := range segs {
 		c := seg.vocab.NewCursor()
-		k, _ := c.Last()
-		if max == nil || bytes.Compare(k, max) > 0 {
-			max = k
+		key, _ := c.Last()
+		if max == nil || bytes.Compare(key, max) > 0 {
+			max = key
 		}
 	}
 	max = append(max, '0')
 	input := func(i int) interface{} {
 		if i >= k {
+			log.Info("input", i, k, string(max))
 			return max
 		}
 		if cursors[i] == nil {
 			cursors[i] = segs[i].vocab.NewCursor()
-			k, _ := cursors[i].First()
-			return k
+			key, _ := cursors[i].First()
+			log.Info("input", i, k, string(key))
+			return key
 		}
-		k, _ := cursors[i].Next()
-		if k == nil {
+		key, _ := cursors[i].Next()
+		if key == nil {
+			log.Info("input", i, k, string(max))
 			return max
 		}
-		return k
+		log.Info("input", i, k, string(key))
+		return key
 	}
 	output := func(k interface{}) error {
+		if newSeg.vocab.Get(k.([]byte)) != nil {
+			return nil
+		}
+		log.Info("!!Output", string(k.([]byte)))
 		var (
 			total uint64
 			start = offset
@@ -388,29 +426,34 @@ func (idx *Indexer) merge(segs []*segment) (*segment, error) {
 		offset += 8
 		for _, seg := range segs {
 			b := seg.vocab.Get(k.([]byte))
+			if b == nil {
+				continue
+			}
 			off := int64(binary.LittleEndian.Uint64(b))
 			count, err := seg.invert.Uint64At(off)
 			if err != nil {
 				return err
 			}
 			total += count
-			data, err := seg.invert.ReadAt(off, int64(count*20))
+			data, err := seg.invert.ReadAt(off+8, int64(count*20))
 			if err != nil {
 				return err
 			}
 			newSeg.invert.WriteAt(data, offset)
 			offset += int64(count * 20)
+			log.Info(seg.name, string(k.([]byte)), start, total, offset, count, len(data))
 		}
-		b := pool.Get().([]byte)
+		//b := pool.Get().([]byte)
+		b := make([]byte, 8)
 		binary.LittleEndian.PutUint64(b, uint64(start))
-		newSeg.invert.PutUint64At(start, total)
 		newSeg.vocab.Put(k.([]byte), b)
+		newSeg.invert.PutUint64At(start, total)
 		return nil
 	}
 	compare := func(a, b interface{}) int {
 		return bytes.Compare(a.([]byte), b.([]byte))
 	}
-	util.KMerge(len(segs), "", max, input, output, compare)
+	util.KMerge(len(segs), []byte(""), max, input, output, compare)
 	return newSeg, nil
 }
 
@@ -426,6 +469,7 @@ func (idx *Indexer) mergeLoop() {
 	}
 exit:
 	ticker.Stop()
+	idx.wg.Done()
 }
 
 func (idx *Indexer) persistLoop() {
@@ -433,6 +477,7 @@ func (idx *Indexer) persistLoop() {
 	for {
 		select {
 		case <-ticker.C:
+			log.Info("persist")
 			idx.persistAll()
 		case <-idx.exitC:
 			goto exit
@@ -440,6 +485,7 @@ func (idx *Indexer) persistLoop() {
 	}
 exit:
 	ticker.Stop()
+	idx.wg.Done()
 }
 
 func (idx *Indexer) Close() {
@@ -449,6 +495,7 @@ func (idx *Indexer) Close() {
 	if !atomic.CompareAndSwapInt32(&idx.exitFlag, 0, 1) {
 		return
 	}
+	close(idx.exitC)
 	idx.wg.Wait()
 	var wg sync.WaitGroup
 	wg.Add(idx.opt.shardNum)

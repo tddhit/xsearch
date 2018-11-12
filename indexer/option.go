@@ -19,7 +19,7 @@ func WithPersistNum(n int) IndexerOption {
 	}
 }
 
-func WithPersistInverval(t time.Duration) IndexerOption {
+func WithPersistInterval(t time.Duration) IndexerOption {
 	return func(o *indexerOptions) {
 		o.persistInterval = t
 	}

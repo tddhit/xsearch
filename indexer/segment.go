@@ -4,6 +4,7 @@ import (
 	"container/heap"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"math"
 	"os"
 	"strings"
@@ -72,6 +73,8 @@ func newSegment(vocabPath, invertPath string, mode int) (*segment, error) {
 		invertList: make(map[string]*types.PostingList),
 		vocab:      vocab,
 		invert:     invert,
+		vocabPath:  vocabPath,
+		invertPath: invertPath,
 	}, nil
 }
 
@@ -142,7 +145,7 @@ func (s *segment) search(query *xsearchpb.Query,
 func (s *segment) lookup(key []byte, doc2BM25 map[string]float32) error {
 	value := s.vocab.Get(key)
 	if value == nil {
-		log.Error(s.name, errNotFoundKey, string(key))
+		//log.Error(s.name, errNotFoundKey, string(key))
 		return errNotFoundKey
 	}
 	off := int64(binary.LittleEndian.Uint64(value))
@@ -175,19 +178,23 @@ func (s *segment) lookup(key []byte, doc2BM25 map[string]float32) error {
 
 func (s *segment) persistData() error {
 	if !atomic.CompareAndSwapInt32(&s.persist, 0, 1) {
-		return errors.New("Already persist.")
+		return fmt.Errorf("segment(%s) already persist.", s.name)
 	}
+	log.Infof("segment(%s) persist.", s.name)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	log.Error(s.name, "persist start", len(s.invertList))
+	if s.NumDocs == 0 {
+		return nil
+	}
 	var off int64
 	s.avgLength = uint32(s.totalLength / s.NumDocs)
 	for term, postingList := range s.invertList {
-		b := pool.Get().([]byte)
+		//b := pool.Get().([]byte)
+		b := make([]byte, 8)
 		binary.LittleEndian.PutUint64(b, uint64(off))
 		s.vocab.Put([]byte(term), b)
-		pool.Put(b)
+		//pool.Put(b)
 
 		s.invert.PutUint64At(off, uint64(postingList.Len()))
 		off += 8

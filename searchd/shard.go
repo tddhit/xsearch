@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/wangbin/jiebago"
@@ -34,12 +35,19 @@ func newShard(
 	stopwords map[string]struct{},
 	c diskqueuepb.DiskqueueGrpcClient) (*shard, error) {
 
+	i, err := indexer.New(
+		indexer.WithDir(dir),
+		indexer.WithID(id),
+		indexer.WithMergeInterval(120*time.Second),
+		indexer.WithPersistInterval(10*time.Second),
+		indexer.WithShardNum(1),
+	)
+	if err != nil {
+		return nil, err
+	}
 	s := &shard{
-		id: id,
-		indexer: indexer.New(
-			indexer.WithIndexDir(dir),
-			indexer.WithCommitNumDocs(1),
-		),
+		id:        id,
+		indexer:   i,
 		segmenter: segmenter,
 		stopwords: stopwords,
 		diskq:     c,
