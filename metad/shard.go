@@ -141,6 +141,7 @@ func (t *shardTable) migrate(s *shard, from, to *node) error {
 	if !t.initial {
 		return errors.New("Need to perfrom AutoBalance first")
 	}
+	s.next = to
 	newTodo(ACTION_MIGRATE_SHARD, from, to, s)
 	return nil
 }
@@ -210,7 +211,7 @@ func (t *shardTable) marshalTo(meta *metadpb.Metadata) {
 	meta.ReplicaFactor = uint32(t.replicaFactor)
 	for _, group := range t.groups {
 		for _, replica := range group.replicas {
-			log.Debug(replica.id, replica.node.getInfo(), replica.node.getAddr(), replica.node.getClusterStatus())
+			log.Debug(replica.id, replica.node.getAddr(), replica.node.getClusterStatus())
 			meta.Shards = append(meta.Shards, &metadpb.Metadata_Shard{
 				GroupID:    uint32(replica.groupID),
 				ReplicaID:  uint32(replica.replicaID),

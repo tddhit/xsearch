@@ -113,7 +113,7 @@ func (n *node) readLoop(r *resource) {
 					log.Debug(err)
 					break
 				}
-				log.Debug("!")
+				log.Debug("!", shard.next == nil, shard)
 				if shard.next.addr != req.Addr {
 					log.Debug("!")
 					log.Errorf("no match: %s != %s", shard.next.addr, req.Addr)
@@ -129,13 +129,7 @@ func (n *node) readLoop(r *resource) {
 				if err != nil {
 					break
 				}
-				if err != nil {
-					break
-				}
-				if shard.node.addr != req.Addr {
-					log.Errorf("no match: %s != %s", shard.node.addr, req.Addr)
-					break
-				}
+				log.Debug(shard, shard == nil)
 				shard.execTodo()
 			case metadpb.RegisterNodeReq_Heartbeat:
 				log.Debug("heartbeat")

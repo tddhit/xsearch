@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"strings"
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
@@ -374,6 +375,6 @@ func print(rsp proto.Message) {
 	if s, err := marshaler.MarshalToString(rsp); err != nil {
 		log.Fatal(err)
 	} else {
-		println(s)
+		println(strings.Replace(s, "\\u003e", ">", -1))
 	}
 }
