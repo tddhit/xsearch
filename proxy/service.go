@@ -22,6 +22,7 @@ import (
 	"github.com/tddhit/xsearch/internal/util"
 	"github.com/tddhit/xsearch/metad/pb"
 	"github.com/tddhit/xsearch/pb"
+	"github.com/tddhit/xsearch/plugin"
 	"github.com/tddhit/xsearch/proxy/pb"
 	"github.com/tddhit/xsearch/searchd/pb"
 )
@@ -58,6 +59,9 @@ func NewService(ctx *cli.Context, r *Resource) *service {
 		if err := s.registerClient(ns); err != nil {
 			log.Fatal(err)
 		}
+	}
+	if err := plugin.Init(ctx.String("sodir")); err != nil {
+		log.Fatal(err)
 	}
 	return s
 }
@@ -209,9 +213,18 @@ func (s *service) Search(
 	if !ok {
 		return nil, status.Error(codes.NotFound, req.Namespace)
 	}
+	args := &xsearchpb.QueryAnalysisArgs{
+		Queries: []*xsearchpb.Query{
+			req.Query,
+		},
+	}
+	if err := plugin.Analyze(args); err != nil {
+		return nil, err
+	}
 	var (
 		wg   sync.WaitGroup
 		rsps = make([]*searchdpb.SearchRsp, table.shardNum)
+		docs []*xsearchpb.Document
 	)
 	for i := range table.groups {
 		wg.Add(1)
@@ -238,7 +251,7 @@ func (s *service) Search(
 			}
 			rsp, err := shard.node.client.Search(ctx, &searchdpb.SearchReq{
 				ShardID: shard.id,
-				Query:   req.Query,
+				Query:   args.Queries[0],
 				Start:   req.Start,
 				Count:   req.Count,
 			})
@@ -250,28 +263,38 @@ func (s *service) Search(
 		}(i)
 	}
 	wg.Wait()
-	docHeap := &DocHeap{}
-	heap.Init(docHeap)
 	for _, rsp := range rsps {
 		for _, doc := range rsp.Docs {
-			heap.Push(docHeap, doc)
+			docs = append(docs, doc)
 		}
 	}
+	rerankArgs := &xsearchpb.RerankArgs{
+		Query: args.Queries[0],
+		Docs:  docs,
+	}
+	if err := plugin.Rerank(rerankArgs); err != nil {
+		return nil, err
+	}
+	docHeap := &DocHeap{}
+	heap.Init(docHeap)
+	for _, doc := range rerankArgs.Docs {
+		heap.Push(docHeap, doc)
+	}
 	var (
-		i      = uint64(0)
-		start  = req.Start
-		count  = req.Count
-		docNum = docHeap.Len()
-		docs   []*xsearchpb.Document
+		i         = uint64(0)
+		start     = req.Start
+		count     = req.Count
+		docNum    = docHeap.Len()
+		finalDocs []*xsearchpb.Document
 	)
 	for count > 0 && docNum > 0 {
 		doc := heap.Pop(docHeap).(*xsearchpb.Document)
 		if i >= start {
-			docs = append(docs, doc)
+			finalDocs = append(finalDocs, doc)
 			count--
 			docNum--
 		}
 		i++
 	}
-	return &proxypb.SearchRsp{Docs: docs}, nil
+	return &proxypb.SearchRsp{Docs: finalDocs}, nil
 }
