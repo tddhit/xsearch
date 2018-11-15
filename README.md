@@ -57,14 +57,14 @@ $ ./xsearch metad
 #### Starting searchd service
 
 ```
-$ ./xsearch searchd --addr 127.0.0.1:10200 --admin 127.0.0.1:10201 --datadir ./searchd1_data --pidpath ./searchd1.pid --metad grpc://127.0.0.1:10100 --diskqueue diskqueue://127.0.0.1:9000 
-$ ./xsearch searchd --addr 127.0.0.1:10210 --admin 127.0.0.1:10211 --datadir ./searchd2_data --pidpath ./searchd2.pid --metad grpc://127.0.0.1:10100 --diskqueue diskqueue://127.0.0.1:9000 
+$ ./xsearch searchd --addr 127.0.0.1:10200 --admin 127.0.0.1:10201 --datadir ./searchd1_data --pidpath ./searchd1.pid --metad grpc://127.0.0.1:10100 --diskqueue diskqueue://127.0.0.1:9000,127.0.0.1:9100,127.0.0.1:9200/leader
+$ ./xsearch searchd --addr 127.0.0.1:10210 --admin 127.0.0.1:10211 --datadir ./searchd2_data --pidpath ./searchd2.pid --metad grpc://127.0.0.1:10100 --diskqueue diskqueue://127.0.0.1:9000,127.0.0.1:9100,127.0.0.1:9200/leader 
 ```
 
 #### Starting proxy service
 
 ```
-$ ./xsearch proxy --addr 127.0.0.1:10300 --admin 127.0.0.1:10301 --namespaces news --pidpath ./proxy.pid --metad grpc://127.0.0.1:10100 --diskqueue grpc://127.0.0.1:9000
+$ ./xsearch proxy --addr 127.0.0.1:10300 --admin 127.0.0.1:10301 --namespaces news --pidpath ./proxy.pid --metad grpc://127.0.0.1:10100 --diskqueue diskqueue://127.0.0.1:9000,127.0.0.1:9100,127.0.0.1:9200/leader
 ```
 
 #### Creating a namespace
