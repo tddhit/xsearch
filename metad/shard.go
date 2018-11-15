@@ -114,7 +114,6 @@ func (t *shardTable) firstAllocate() error {
 			if k >= len(nodes) {
 				k = 0
 			}
-			log.Debug(i, j, nodes[k].addr)
 			t.groups[i].replicas[j].next = nodes[k]
 			k++
 		}
@@ -147,7 +146,6 @@ func (t *shardTable) migrate(s *shard, from, to *node) error {
 }
 
 func (t *shardTable) commit() error {
-	log.Debug("commit")
 	var wg sync.WaitGroup
 	for _, group := range t.groups {
 		for _, replica := range group.replicas {
@@ -155,7 +153,6 @@ func (t *shardTable) commit() error {
 				continue
 			}
 			wg.Add(1)
-			log.Debug("todo")
 			replica.todo.do(&wg)
 		}
 	}
@@ -211,7 +208,6 @@ func (t *shardTable) marshalTo(meta *metadpb.Metadata) {
 	meta.ReplicaFactor = uint32(t.replicaFactor)
 	for _, group := range t.groups {
 		for _, replica := range group.replicas {
-			log.Debug(replica.id, replica.node.getAddr(), replica.node.getClusterStatus())
 			meta.Shards = append(meta.Shards, &metadpb.Metadata_Shard{
 				GroupID:    uint32(replica.groupID),
 				ReplicaID:  uint32(replica.replicaID),
@@ -231,22 +227,16 @@ func newShard(namespace string, groupID, replicaID int) *shard {
 }
 
 func (s *shard) execTodo() error {
-	log.Debug("exec 1")
 	if s.todo == nil {
 		return nil
 	}
-	log.Debug("exec 2")
 	count, err := s.todo.do()
-	log.Debug(count, err)
 	if count == 0 {
-		log.Debug("return")
 		s.todo = nil
 		return nil
 	}
 	if err != nil {
-		log.Debug("return")
 		return err
 	}
-	log.Debug("return")
 	return nil
 }

@@ -48,29 +48,36 @@ message InfoRsp {
 }
 
 message IndexDocReq {
-    string namespace = 1;
-    xsearchpb.Document doc = 2;
+    string traceID = 1;
+    string namespace = 2;
+    xsearchpb.Document doc = 3;
 }
 
 message IndexDocRsp {
-    string docID = 1;
-}
-
-message RemoveDocReq {
-    string namespace = 1;
+    string traceID = 1;
     string docID = 2;
 }
 
+message RemoveDocReq {
+    string traceID = 1;
+    string namespace = 2;
+    string docID = 3;
+}
+
 message RemoveDocRsp {
+    string traceID = 1;
 }
 
 message SearchReq {
-    string namespace = 1;
-    xsearchpb.Query query = 2;
-    uint64 start = 3;
-    uint32 count = 4;
+    string traceID = 1;
+    string namespace = 2;
+    xsearchpb.Query query = 3;
+    uint64 start = 4;
+    uint32 count = 5;
 }
 
 message SearchRsp {
-    repeated xsearchpb.Document docs = 1;
+    string traceID = 1;
+    xsearchpb.Query query = 2;
+    repeated xsearchpb.Document docs = 3;
 }

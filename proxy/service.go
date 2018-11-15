@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	uuid "github.com/satori/go.uuid"
+	"github.com/satori/go.uuid"
 	"github.com/urfave/cli"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -18,6 +18,7 @@ import (
 	"github.com/tddhit/box/mw"
 	"github.com/tddhit/box/transport"
 	"github.com/tddhit/diskqueue/pb"
+	_ "github.com/tddhit/diskqueue/resolver"
 	"github.com/tddhit/tools/log"
 	"github.com/tddhit/xsearch/internal/util"
 	"github.com/tddhit/xsearch/metad/pb"
@@ -165,7 +166,8 @@ func (s *service) IndexDoc(
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	log.Debugf("index doc(%s) to shard(%s.%d)", id.String(), table.namespace, groupID)
+	log.Infof("Type=IndexDoc\tTraceID=%s\tDocID=%s\tShard=%s.%d",
+		req.TraceID, id.String(), table.namespace, groupID)
 	return &proxypb.IndexDocRsp{DocID: id.String()}, nil
 }
 
@@ -200,8 +202,8 @@ func (s *service) RemoveDoc(
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	log.Debugf("remove doc(%s) to shard(%s.%d)",
-		id.String(), table.namespace, groupID)
+	log.Infof("Type=RemoveDoc\tTraceID=%s\tDocID=%s\tShard=%s.%d",
+		req.TraceID, id.String(), table.namespace, groupID)
 	return &proxypb.RemoveDocRsp{}, nil
 }
 
@@ -241,7 +243,8 @@ func (s *service) Search(
 				tryCount++
 				shard, _ = table.getShard(i, int(replicaID)%table.replicaFactor)
 				if shard.node.status == "online" {
-					log.Debugf("search %s", shard.id)
+					log.Debugf("Type=Search\tTraceID=%s\tQuery=%s\tShard=%s",
+						req.TraceID, req.Query.Raw, shard.id)
 					break
 				}
 				replicaID++
@@ -250,6 +253,7 @@ func (s *service) Search(
 				}
 			}
 			rsp, err := shard.node.client.Search(ctx, &searchdpb.SearchReq{
+				TraceID: req.TraceID,
 				ShardID: shard.id,
 				Query:   args.Queries[0],
 				Start:   req.Start,
@@ -296,5 +300,7 @@ func (s *service) Search(
 		}
 		i++
 	}
+	log.Infof("Type=Search\tTraceID=%s\tQuery=%s",
+		req.TraceID, req.Query.Raw)
 	return &proxypb.SearchRsp{Docs: finalDocs}, nil
 }

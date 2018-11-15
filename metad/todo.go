@@ -71,18 +71,15 @@ func (d *todo) do(wg ...*sync.WaitGroup) (int, error) {
 	if d.wg == nil && len(wg) == 1 {
 		d.wg = wg[0]
 	}
-	log.Debug("do 1", len(d.stages))
 	if len(d.stages) == 0 {
 		return 0, nil
 	}
-	log.Debug("do 2")
 	stageFunc := d.stages[0]
 	if err := stageFunc(); err != nil {
 		log.Error(err)
 		return len(d.stages), err
 	}
 	d.stages = d.stages[1:]
-	log.Debug("do 3", len(d.stages))
 	if len(d.stages) == 0 {
 		d.wg.Done()
 		d.wg = nil
@@ -93,7 +90,6 @@ func (d *todo) do(wg ...*sync.WaitGroup) (int, error) {
 
 func (d *todo) buildCreateStages() {
 	d.stages = append(d.stages, func() error {
-		log.Debug("create 1")
 		d.from.writeC <- &metadpb.RegisterNodeRsp{
 			Type:    metadpb.RegisterNodeRsp_CreateShard,
 			ShardID: d.shard.id,
@@ -102,7 +98,6 @@ func (d *todo) buildCreateStages() {
 	})
 
 	d.stages = append(d.stages, func() error {
-		log.Debug("create 2")
 		d.from.status = NODE_CLUSTER_ONLINE
 		d.shard.node = d.from
 		d.shard.next = nil
@@ -112,7 +107,6 @@ func (d *todo) buildCreateStages() {
 
 func (d *todo) buildMigrateStages() {
 	d.stages = append(d.stages, func() error {
-		log.Debug("migrate 1")
 		d.to.writeC <- &metadpb.RegisterNodeRsp{
 			Type:    metadpb.RegisterNodeRsp_CreateShard,
 			ShardID: d.shard.id,
@@ -124,7 +118,6 @@ func (d *todo) buildMigrateStages() {
 		d.to.status = NODE_CLUSTER_ONLINE
 		d.shard.node = d.to
 		d.shard.next = nil
-		log.Debug("migrate 2")
 		d.from.writeC <- &metadpb.RegisterNodeRsp{
 			Type:    metadpb.RegisterNodeRsp_RemoveShard,
 			ShardID: d.shard.id,

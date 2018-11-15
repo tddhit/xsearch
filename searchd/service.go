@@ -104,7 +104,6 @@ func (s *service) waitCommand(addr string, stream metadpb.Metad_RegisterNodeClie
 		}
 		switch rsp.Type {
 		case metadpb.RegisterNodeRsp_CreateShard:
-			log.Debug("create shard")
 			_, err := s.resource.createShard(
 				rsp.ShardID,
 				s.addr,
@@ -116,7 +115,6 @@ func (s *service) waitCommand(addr string, stream metadpb.Metad_RegisterNodeClie
 				log.Error(err)
 				continue
 			}
-			log.Debug("register shard")
 			err = stream.Send(&metadpb.RegisterNodeReq{
 				Type:    metadpb.RegisterNodeReq_RegisterShard,
 				Addr:    addr,
@@ -126,11 +124,9 @@ func (s *service) waitCommand(addr string, stream metadpb.Metad_RegisterNodeClie
 				log.Error(err)
 			}
 		case metadpb.RegisterNodeRsp_RemoveShard:
-			log.Debug("remove shard")
 			if err := s.resource.removeShard(rsp.ShardID); err != nil {
 				log.Error(err)
 			}
-			log.Debug("unregister shard")
 			err := stream.Send(&metadpb.RegisterNodeReq{
 				Type:    metadpb.RegisterNodeReq_UnregisterShard,
 				Addr:    addr,
@@ -169,11 +165,9 @@ exit:
 func (s *service) Search(ctx context.Context,
 	req *searchdpb.SearchReq) (*searchdpb.SearchRsp, error) {
 
-	log.Debug("search", req.Query.Raw)
 	shard := ctx.Value(shardContextKey).(*shard)
 	for term := range s.segmenter.Cut(req.Query.Raw, true) {
 		if _, ok := s.stopwords[term]; !ok {
-			log.Debug(term)
 			req.Query.Tokens = append(
 				req.Query.Tokens,
 				&xsearchpb.Token{Term: term},
@@ -184,6 +178,8 @@ func (s *service) Search(ctx context.Context,
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+	log.Infof("Type=Search\tTraceID=%s\tQuery=%s\tShard=%s\tCount=%d",
+		req.TraceID, req.Query.Raw, shard.id, len(docs))
 	return &searchdpb.SearchRsp{
 		Docs: docs,
 	}, nil

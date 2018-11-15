@@ -105,31 +105,21 @@ func (n *node) readLoop(r *resource) {
 			}
 			switch req.Type {
 			case metadpb.RegisterNodeReq_RegisterShard:
-				log.Debug("register shard")
 				shard, err := r.getShard(namespace, groupID, replicaID)
-				log.Debug("!")
 				if err != nil {
-					log.Debug("!")
 					log.Debug(err)
 					break
 				}
-				log.Debug("!", shard.next == nil, shard)
 				if shard.next.addr != req.Addr {
-					log.Debug("!")
 					log.Errorf("no match: %s != %s", shard.next.addr, req.Addr)
 					break
 				}
-				log.Debug("!")
-				log.Debug("exec todo")
 				shard.execTodo()
-				log.Debug("!")
 			case metadpb.RegisterNodeReq_UnregisterShard:
-				log.Debug("unregister shard")
 				shard, err := r.getShard(namespace, groupID, replicaID)
 				if err != nil {
 					break
 				}
-				log.Debug(shard, shard == nil)
 				shard.execTodo()
 			case metadpb.RegisterNodeReq_Heartbeat:
 				log.Debug("heartbeat")
@@ -146,7 +136,6 @@ exit:
 func (n *node) writeLoop(stream metadpb.Metad_RegisterNodeServer) {
 	for {
 		rsp := <-n.writeC
-		log.Debug("rsp")
 		if rsp == nil {
 			goto exit
 		}

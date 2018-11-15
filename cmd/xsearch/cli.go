@@ -1,8 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"context"
+	"os"
+	"runtime"
 	"strings"
+	"sync"
+	"sync/atomic"
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
@@ -42,7 +47,7 @@ search -> search query, require shardid/query/start/count
 info -> shards information, no args
 
 proxy operation list:
-index -> build indexes, require namespace/content
+index -> build indexes, require namespace/(content or file)
 remove -> remove document from indexes, require namespace/docid
 search -> search query, require namespace/query/start/count
 info -> shard tables information, no args
@@ -101,6 +106,9 @@ info -> shard tables information, no args
 		},
 		cli.IntFlag{
 			Name: "count",
+		},
+		cli.StringFlag{
+			Name: "file",
 		},
 	},
 }
@@ -310,19 +318,62 @@ func execSearchdInfo(params *cli.Context, client searchdpb.AdminGrpcClient) {
 }
 
 func execProxyIndex(params *cli.Context, client proxypb.ProxyGrpcClient) {
-	rsp, err := client.IndexDoc(
-		context.Background(),
-		&proxypb.IndexDocReq{
-			Namespace: params.String("namespace"),
-			Doc: &xsearchpb.Document{
-				Content: params.String("content"),
-			},
-		},
-	)
-	if err != nil {
-		log.Fatal(err)
+	poolC := make(chan string, runtime.NumCPU())
+	if params.String("content") != "" {
+		poolC <- params.String("content")
 	}
-	println("docID:", rsp.DocID)
+	if params.String("file") != "" {
+		go func() {
+			max := 10240
+			f, err := os.Open(params.String("file"))
+			if err != nil {
+				log.Fatal(err)
+			}
+			buf := make([]byte, max)
+			scanner := bufio.NewScanner(f)
+			scanner.Buffer(buf, max)
+			for scanner.Scan() {
+				content := scanner.Text()
+				poolC <- content
+			}
+			f.Close()
+			close(poolC)
+
+		}()
+	} else {
+		close(poolC)
+	}
+	var (
+		num int64
+		wg  sync.WaitGroup
+	)
+	for i := 0; i < runtime.NumCPU(); i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			for {
+				content, ok := <-poolC
+				if !ok {
+					return
+				}
+				rsp, err := client.IndexDoc(
+					context.Background(),
+					&proxypb.IndexDocReq{
+						Namespace: params.String("namespace"),
+						Doc: &xsearchpb.Document{
+							Content: content,
+						},
+					},
+				)
+				if err != nil {
+					log.Fatal(err)
+				}
+				log.Debugf("docID:%s,num=%d", rsp.DocID, atomic.AddInt64(&num, 1))
+			}
+		}()
+	}
+	wg.Wait()
 }
 
 func execProxyRemove(params *cli.Context, client proxypb.ProxyGrpcClient) {

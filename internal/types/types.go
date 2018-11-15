@@ -93,3 +93,12 @@ func (l *PostingList) PushBack(p *Posting) {
 	l.lazyInit()
 	l.insert(p, l.root.prev)
 }
+
+type Iface struct {
+	Type uintptr
+	Data uintptr
+}
+
+type ReqHeader struct {
+	TraceID string
+}

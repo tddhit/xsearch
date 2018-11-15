@@ -13,16 +13,6 @@ A distributed high-performance search engine
 
 ### Architecture
 
-```
-graph TB
-Metad-->Searchd1
-Metad-->Searchd2
-Searchd1-->Proxy1
-Searchd1-->Proxy2
-Searchd2-->Proxy1
-Searchd2-->Proxy2
-```
-
 ### Getting Started
 
 #### Installing

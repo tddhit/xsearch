@@ -11,7 +11,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	uuid "github.com/satori/go.uuid"
+	"github.com/satori/go.uuid"
 
 	"github.com/tddhit/bindex"
 	"github.com/tddhit/tools/log"
@@ -84,7 +84,6 @@ func (s *segment) indexDocument(doc *xsearchpb.Document) error {
 		posting *types.Posting
 	)
 	for _, token := range doc.Tokens {
-		//log.Error(len(doc.Tokens))
 		term := token.GetTerm()
 		if term == "" {
 			continue
@@ -145,7 +144,6 @@ func (s *segment) search(query *xsearchpb.Query,
 func (s *segment) lookup(key []byte, doc2BM25 map[string]float32) error {
 	value := s.vocab.Get(key)
 	if value == nil {
-		//log.Error(s.name, errNotFoundKey, string(key))
 		return errNotFoundKey
 	}
 	off := int64(binary.LittleEndian.Uint64(value))
@@ -180,10 +178,10 @@ func (s *segment) persistData() error {
 	if !atomic.CompareAndSwapInt32(&s.persist, 0, 1) {
 		return fmt.Errorf("segment(%s) already persist.", s.name)
 	}
-	log.Infof("segment(%s) persist.", s.name)
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	log.Infof("Type=Persist\tSegment=%s", s.name)
 	if s.NumDocs == 0 {
 		return nil
 	}
@@ -213,7 +211,6 @@ func (s *segment) persistData() error {
 			off += 4
 		}
 	}
-	log.Error(s.name, "persist end", len(s.invertList))
 	s.invertList = nil
 	s.docsLength = nil
 	return nil

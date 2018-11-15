@@ -35,6 +35,9 @@ func Init(sodir string) error {
 	err := filepath.Walk(
 		sodir,
 		func(path string, info os.FileInfo, err error) error {
+			if info == nil {
+				return nil
+			}
 			if !strings.HasSuffix(info.Name(), ".so") {
 				return nil
 			}

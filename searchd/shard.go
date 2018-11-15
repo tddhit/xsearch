@@ -91,7 +91,6 @@ func (s *shard) indexLoop(topic, channel string) {
 			if doc, ok := cmd.DocOneof.(*xsearchpb.Command_Doc); ok {
 				for term := range s.segmenter.Cut(doc.Doc.Content, true) {
 					if _, ok := s.stopwords[term]; !ok {
-						log.Debug(term)
 						doc.Doc.Tokens = append(
 							doc.Doc.Tokens,
 							&xsearchpb.Token{Term: term},
@@ -101,12 +100,12 @@ func (s *shard) indexLoop(topic, channel string) {
 				if err := s.indexer.IndexDocument(doc.Doc); err != nil {
 					log.Error(err)
 				}
-				log.Debugf("index doc id=%s content=%s", doc.Doc.ID, doc.Doc.Content)
+				log.Infof("Type=IndexDoc\tDocID=%s", doc.Doc.ID)
 			}
 		case xsearchpb.Command_REMOVE:
 			if docID, ok := cmd.DocOneof.(*xsearchpb.Command_DocID); ok {
 				s.indexer.RemoveDocument(docID.DocID)
-				log.Debugf("remove doc id=%s", docID.DocID)
+				log.Infof("Type=RemoveDoc\tDocID=%s", docID.DocID)
 			}
 		}
 	}

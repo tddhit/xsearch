@@ -266,7 +266,6 @@ func (idx *Indexer) persist(shardID int) error {
 	defer idx.RUnlock()
 
 	segID := atomic.AddInt32(&idx.segmentID, 1)
-	log.Infof("open segment %d", segID)
 	newSeg, err := idx.openSegment(mmap.MODE_CREATE, segID)
 	if err != nil {
 		return err
@@ -276,7 +275,6 @@ func (idx *Indexer) persist(shardID int) error {
 	oldSeg := segs[len(segs)-1]
 	// Use idx.shards to avoid append allocation of new variables
 	idx.shards[shardID] = append(idx.shards[shardID], newSeg)
-	log.Debugf("oldseg %s, len %d", oldSeg.name, len(idx.shards[shardID]))
 	idx.shardLocks[shardID].Unlock()
 
 	idx.wg.Add(1)
@@ -307,8 +305,7 @@ func (idx *Indexer) mergeSegments() {
 		needMerge []*segment
 		newSegs   []*segment
 	)
-	shards, n := idx.copy()
-	log.Debugf("merge len %d", n)
+	shards, _ := idx.copy()
 	for i, segs := range shards {
 		for j, seg := range segs {
 			merge := false
@@ -324,7 +321,6 @@ func (idx *Indexer) mergeSegments() {
 			if numDocs >= idx.opt.persistNum {
 				merge = true
 			}
-			log.Info("seg", i, j, len(shards)-1, len(segs)-1, seg.NumDocs, numDocs)
 			if i == len(shards)-1 && j == len(segs)-1 {
 				if len(needMerge) > 1 {
 					merge = true
@@ -333,7 +329,6 @@ func (idx *Indexer) mergeSegments() {
 				}
 			}
 			if merge {
-				log.Info("merge", needMerge)
 				newSeg, err := idx.merge(needMerge)
 				if err != nil {
 					log.Error(err)
@@ -345,7 +340,6 @@ func (idx *Indexer) mergeSegments() {
 			}
 		}
 	}
-	log.Debugf("newSegs len %d", len(newSegs))
 	idx.shardBalance(newSegs)
 }
 
@@ -353,16 +347,13 @@ func (idx *Indexer) shardBalance(newSegs []*segment) {
 	idx.Lock()
 	defer idx.Unlock()
 
-	log.Debugf("balance len %d", len(idx.shards[0]))
 	newShards := make([][]*segment, idx.opt.shardNum)
 	i := 0
 	for _, segs := range idx.shards {
 		for _, seg := range segs {
 			if seg.recycle {
-				log.Infof("segment %s delete", seg.name)
 				seg.delete()
 			} else {
-				log.Infof("segment %s add", seg.name)
 				newShards[i] = append(newShards[i], seg)
 				i = (i + 1) % idx.opt.shardNum
 			}
@@ -397,28 +388,23 @@ func (idx *Indexer) merge(segs []*segment) (*segment, error) {
 	max = append(max, '0')
 	input := func(i int) interface{} {
 		if i >= k {
-			log.Info("input", i, k, string(max))
 			return max
 		}
 		if cursors[i] == nil {
 			cursors[i] = segs[i].vocab.NewCursor()
 			key, _ := cursors[i].First()
-			log.Info("input", i, k, string(key))
 			return key
 		}
 		key, _ := cursors[i].Next()
 		if key == nil {
-			log.Info("input", i, k, string(max))
 			return max
 		}
-		log.Info("input", i, k, string(key))
 		return key
 	}
 	output := func(k interface{}) error {
 		if newSeg.vocab.Get(k.([]byte)) != nil {
 			return nil
 		}
-		log.Info("!!Output", string(k.([]byte)))
 		var (
 			total uint64
 			start = offset
@@ -441,7 +427,6 @@ func (idx *Indexer) merge(segs []*segment) (*segment, error) {
 			}
 			newSeg.invert.WriteAt(data, offset)
 			offset += int64(count * 20)
-			log.Info(seg.name, string(k.([]byte)), start, total, offset, count, len(data))
 		}
 		//b := pool.Get().([]byte)
 		b := make([]byte, 8)
@@ -477,7 +462,6 @@ func (idx *Indexer) persistLoop() {
 	for {
 		select {
 		case <-ticker.C:
-			log.Info("persist")
 			idx.persistAll()
 		case <-idx.exitC:
 			goto exit

@@ -20,10 +20,11 @@ message InfoRsp {
 }
 
 message SearchReq {
-    string shardID = 1;
-    xsearchpb.Query query = 2;
-    uint64 start = 3;
-    uint32 count = 4;
+    string traceID = 1;
+    string shardID = 2;
+    xsearchpb.Query query = 3;
+    uint64 start = 4;
+    uint32 count = 5;
 }
 
 message SearchRsp {

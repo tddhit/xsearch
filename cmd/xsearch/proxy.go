@@ -5,6 +5,7 @@ import (
 
 	"github.com/tddhit/box/mw"
 	"github.com/tddhit/box/transport"
+	tropt "github.com/tddhit/box/transport/option"
 	"github.com/tddhit/tools/log"
 	"github.com/tddhit/xsearch/proxy"
 	"github.com/tddhit/xsearch/proxy/pb"
@@ -56,7 +57,10 @@ func startProxy(ctx *cli.Context) {
 	}
 
 	svc := proxy.NewService(ctx, resource)
-	server, err := transport.Listen("grpc://" + ctx.String("addr"))
+	server, err := transport.Listen(
+		"grpc://"+ctx.String("addr"),
+		tropt.WithUnaryServerMiddleware(proxy.CheckParams(svc)),
+	)
 	if err != nil {
 		log.Fatal(err)
 	}
