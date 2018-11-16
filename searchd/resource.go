@@ -2,8 +2,13 @@ package searchd
 
 import (
 	"errors"
+	"fmt"
 	"path"
+	"sort"
+	"strconv"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/tddhit/diskqueue/pb"
 	"github.com/tddhit/xsearch/searchd/pb"
@@ -76,7 +81,40 @@ func (r *Resource) marshalTo(rsp *searchdpb.InfoRsp) {
 	r.RLock()
 	defer r.RUnlock()
 
-	for _, s := range r.shards {
-		rsp.Shards = append(rsp.Shards, s.id)
+	type segment struct {
+		id   int
+		info string
+	}
+	var segments []*segment
+	for _, resourceShard := range r.shards {
+		segments = segments[:0]
+		pbs := &searchdpb.InfoRsp_Shard{
+			ID: resourceShard.id,
+		}
+		for _, indexShard := range resourceShard.indexer.Shards {
+			for _, seg := range indexShard {
+				id, _ := strconv.Atoi(strings.Split(seg.ID, "_")[1])
+				segments = append(segments, &segment{
+					id: id,
+					info: fmt.Sprintf(
+						"ctime=%s    id=%-10dnum=%d",
+						time.Unix(
+							seg.CreateTime/int64(time.Second),
+							seg.CreateTime%int64(time.Second),
+						).Format("2006-01-02 15:04:05"),
+						id,
+						seg.NumDocs,
+					),
+				})
+				pbs.NumDocs += seg.NumDocs
+			}
+		}
+		sort.Slice(segments, func(i, j int) bool {
+			return segments[i].id < segments[j].id
+		})
+		for _, seg := range segments {
+			pbs.Segments = append(pbs.Segments, seg.info)
+		}
+		rsp.Shards = append(rsp.Shards, pbs)
 	}
 }

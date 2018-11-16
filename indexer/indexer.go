@@ -37,10 +37,11 @@ var (
 type Indexer struct {
 	sync.RWMutex
 	opt        indexerOptions
-	shards     [][]*segment
+	Shards     [][]*segment
 	shardLocks []sync.RWMutex
 	segmentID  int32
 	removeDocs sync.Map // TODO: replace with bitmap
+	NumDocs    uint64
 	indexDocC  []chan *xsearchpb.Document
 	indexRspC  []chan error
 	exitC      chan struct{}
@@ -56,7 +57,7 @@ func New(opts ...IndexerOption) (*Indexer, error) {
 	}
 	idx := &Indexer{
 		opt:        opt,
-		shards:     make([][]*segment, opt.shardNum),
+		Shards:     make([][]*segment, opt.shardNum),
 		shardLocks: make([]sync.RWMutex, opt.shardNum),
 		indexDocC:  make([]chan *xsearchpb.Document, opt.shardNum),
 		indexRspC:  make([]chan error, opt.shardNum),
@@ -80,7 +81,7 @@ func New(opts ...IndexerOption) (*Indexer, error) {
 			log.Error(err)
 			return nil, err
 		}
-		idx.shards[i] = append(idx.shards[i], seg)
+		idx.Shards[i] = append(idx.Shards[i], seg)
 		idx.wg.Add(1)
 		go idx.indexLoop(i)
 	}
@@ -169,7 +170,7 @@ exit:
 
 func (idx *Indexer) indexOne(shardID int, doc *xsearchpb.Document) error {
 	idx.shardLocks[shardID].RLock()
-	segs := idx.shards[shardID]
+	segs := idx.Shards[shardID]
 	seg := segs[len(segs)-1]
 	if err := seg.indexDocument(doc); err != nil {
 		idx.shardLocks[shardID].RUnlock()
@@ -177,8 +178,8 @@ func (idx *Indexer) indexOne(shardID int, doc *xsearchpb.Document) error {
 	}
 	idx.shardLocks[shardID].RUnlock()
 
-	numDocs := atomic.LoadUint64(&seg.NumDocs)
-	if idx.opt.persistInterval == 0 && numDocs >= idx.opt.persistNum {
+	NumDocs := atomic.LoadUint64(&seg.NumDocs)
+	if idx.opt.persistInterval == 0 && NumDocs >= idx.opt.persistNum {
 		idx.persist(shardID)
 	}
 	return nil
@@ -251,9 +252,9 @@ func (idx *Indexer) copy() ([][]*segment, int32) {
 	shards := make([][]*segment, idx.opt.shardNum)
 	for i := range shards {
 		idx.shardLocks[i].RLock()
-		shards[i] = make([]*segment, len(idx.shards[i]))
+		shards[i] = make([]*segment, len(idx.Shards[i]))
 		for j := range shards[i] {
-			shards[i][j] = idx.shards[i][j]
+			shards[i][j] = idx.Shards[i][j]
 			count++
 		}
 		idx.shardLocks[i].RUnlock()
@@ -271,10 +272,10 @@ func (idx *Indexer) persist(shardID int) error {
 		return err
 	}
 	idx.shardLocks[shardID].Lock()
-	segs := idx.shards[shardID]
+	segs := idx.Shards[shardID]
 	oldSeg := segs[len(segs)-1]
 	// Use idx.shards to avoid append allocation of new variables
-	idx.shards[shardID] = append(idx.shards[shardID], newSeg)
+	idx.Shards[shardID] = append(idx.Shards[shardID], newSeg)
 	idx.shardLocks[shardID].Unlock()
 
 	idx.wg.Add(1)
@@ -301,7 +302,7 @@ func (idx *Indexer) persistAll() {
 
 func (idx *Indexer) mergeSegments() {
 	var (
-		numDocs   uint64
+		NumDocs   uint64
 		needMerge []*segment
 		newSegs   []*segment
 	)
@@ -313,12 +314,12 @@ func (idx *Indexer) mergeSegments() {
 				if seg.NumDocs > 0 && seg.NumDocs < idx.opt.persistNum {
 					seg.recycle = true
 					needMerge = append(needMerge, seg)
-					numDocs += seg.NumDocs
+					NumDocs += seg.NumDocs
 				} else if seg.NumDocs == 0 {
 					seg.recycle = true
 				}
 			}
-			if numDocs >= idx.opt.persistNum {
+			if NumDocs >= idx.opt.persistNum {
 				merge = true
 			}
 			if i == len(shards)-1 && j == len(segs)-1 {
@@ -335,7 +336,7 @@ func (idx *Indexer) mergeSegments() {
 					return
 				}
 				newSegs = append(newSegs, newSeg)
-				numDocs = 0
+				NumDocs = 0
 				needMerge = needMerge[:0]
 			}
 		}
@@ -349,7 +350,7 @@ func (idx *Indexer) shardBalance(newSegs []*segment) {
 
 	newShards := make([][]*segment, idx.opt.shardNum)
 	i := 0
-	for _, segs := range idx.shards {
+	for _, segs := range idx.Shards {
 		for _, seg := range segs {
 			if seg.recycle {
 				seg.delete()
@@ -363,7 +364,7 @@ func (idx *Indexer) shardBalance(newSegs []*segment) {
 		newShards[i] = append(newShards[i], seg)
 		i = (i + 1) % idx.opt.shardNum
 	}
-	idx.shards = newShards
+	idx.Shards = newShards
 }
 
 func (idx *Indexer) merge(segs []*segment) (*segment, error) {
@@ -379,6 +380,7 @@ func (idx *Indexer) merge(segs []*segment) (*segment, error) {
 		offset int64
 	)
 	for _, seg := range segs {
+		newSeg.NumDocs += seg.NumDocs
 		c := seg.vocab.NewCursor()
 		key, _ := c.Last()
 		if max == nil || bytes.Compare(key, max) > 0 {
@@ -486,7 +488,7 @@ func (idx *Indexer) Close() {
 	for i := 0; i < idx.opt.shardNum; i++ {
 		go func(i int) {
 			idx.shardLocks[i].Lock()
-			segs := idx.shards[i]
+			segs := idx.Shards[i]
 			seg := segs[len(segs)-1]
 			if err := seg.persistData(); err != nil {
 				log.Error(err)

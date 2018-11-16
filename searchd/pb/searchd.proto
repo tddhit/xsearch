@@ -16,7 +16,12 @@ message InfoReq {
 }
 
 message InfoRsp {
-    repeated string shards = 1;
+    message Shard {
+        string ID = 1;
+        uint64 numDocs = 2;
+        repeated string segments = 3;
+    }
+    repeated Shard shards = 1;
 }
 
 message SearchReq {

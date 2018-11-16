@@ -1,7 +1,9 @@
 package indexer
 
 import (
+	"bytes"
 	"container/heap"
+	"crypto/md5"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -10,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/satori/go.uuid"
 
@@ -21,10 +24,11 @@ import (
 )
 
 const (
-	TimeFormat         = "2006/01/02"
-	maxMapSize         = 1 << 37
-	BM25_K1    float32 = 1.2
-	BM25_B     float32 = 0.75
+	maxMapSize         = 1 << 30 // 1G
+	bm25_k1    float32 = 1.2
+	bm25_b     float32 = 0.75
+	version    uint32  = 1
+	magic      uint32  = 0xC9D12F01
 )
 
 var (
@@ -41,7 +45,8 @@ func init() {
 
 type segment struct {
 	mu          sync.RWMutex
-	name        string
+	ID          string
+	CreateTime  int64
 	NumDocs     uint64
 	totalLength uint64
 	avgLength   uint32
@@ -66,9 +71,24 @@ func newSegment(vocabPath, invertPath string, mode int) (*segment, error) {
 		log.Error(err)
 		return nil, err
 	}
-	s := strings.Split(vocabPath, "/")
+	var (
+		numDocs    uint64
+		createTime int64 = time.Now().UnixNano()
+	)
+	if mode == mmap.MODE_RDONLY {
+		if num, ctime, err := validate(invert); err != nil {
+			log.Error(err)
+			return nil, err
+		} else {
+			numDocs = num
+			createTime = ctime
+		}
+	}
+	s := strings.Split(vocabPath[:len(vocabPath)-6], "/")
 	return &segment{
-		name:       s[len(s)-1],
+		ID:         s[len(s)-1],
+		NumDocs:    numDocs,
+		CreateTime: createTime,
 		docsLength: make(map[string]uint32),
 		invertList: make(map[string]*types.PostingList),
 		vocab:      vocab,
@@ -76,6 +96,39 @@ func newSegment(vocabPath, invertPath string, mode int) (*segment, error) {
 		vocabPath:  vocabPath,
 		invertPath: invertPath,
 	}, nil
+}
+
+func validate(invert *mmap.MmapFile) (uint64, int64, error) {
+	var tailer int64 = 40
+	if invert.Size() < tailer {
+		return 0, 0, fmt.Errorf("Invalid invert size: %d", invert.Size())
+	}
+	buf := (*[maxMapSize]byte)(invert.Buf(0))
+	checksum := md5.Sum((*buf)[:invert.Size()-tailer])
+	v, err := invert.ReadAt(invert.Size()-tailer, 16)
+	if err != nil || bytes.Compare(v, checksum[:]) != 0 {
+		return 0, 0, fmt.Errorf("check checksum fail. %x, %s", v, err.Error())
+	}
+	tailer -= 16
+	if v, err := invert.Uint32At(invert.Size() - tailer); err != nil || v != magic {
+		return 0, 0, fmt.Errorf("check magic fail. %x, %s", v, err.Error())
+	}
+	tailer -= 4
+	if v, err := invert.Uint32At(invert.Size() - tailer); err != nil || v != version {
+		return 0, 0, fmt.Errorf("check version fail. %d, %s", v, err.Error())
+	}
+	tailer -= 4
+	numDocs, err := invert.Uint64At(invert.Size() - tailer)
+	if err != nil {
+		return 0, 0, err
+	}
+	tailer -= 8
+	ctime, err := invert.Uint64At(invert.Size() - tailer)
+	if err != nil {
+		return 0, 0, err
+	}
+	tailer -= 8
+	return numDocs, int64(ctime), nil
 }
 
 func (s *segment) indexDocument(doc *xsearchpb.Document) error {
@@ -176,15 +229,16 @@ func (s *segment) lookup(key []byte, doc2BM25 map[string]float32) error {
 
 func (s *segment) persistData() error {
 	if !atomic.CompareAndSwapInt32(&s.persist, 0, 1) {
-		return fmt.Errorf("segment(%s) already persist.", s.name)
+		return fmt.Errorf("segment(%s) already persist.", s.ID)
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	log.Infof("Type=Persist\tSegment=%s", s.name)
+	log.Infof("Type=Persist\tSegment=%s", s.ID)
 	if s.NumDocs == 0 {
 		return nil
 	}
+
 	var off int64
 	s.avgLength = uint32(s.totalLength / s.NumDocs)
 	for term, postingList := range s.invertList {
@@ -205,12 +259,22 @@ func (s *segment) persistData() error {
 			s.invert.WriteAt(id[:], off)
 			off += 16
 			idf := float32(math.Log2(float64(s.NumDocs)/float64(postingList.Len()) + 1))
-			bm25 := idf * float32(p.Freq) * (BM25_K1 + 1) / (float32(p.Freq) + BM25_K1*(1-BM25_B+BM25_B*float32(s.docsLength[id.String()])/float32(s.avgLength)))
+			bm25 := idf * float32(p.Freq) * (bm25_k1 + 1) / (float32(p.Freq) + bm25_k1*(1-bm25_b+bm25_b*float32(s.docsLength[id.String()])/float32(s.avgLength)))
 			bits := math.Float32bits(bm25)
 			s.invert.PutUint32At(off, bits)
 			off += 4
 		}
 	}
+	buf := (*[maxMapSize]byte)(s.invert.Buf(0))
+	checksum := md5.Sum((*buf)[:off])
+	s.invert.WriteAt(checksum[:], 16)
+	off += 16
+	s.invert.PutUint32At(off, magic)
+	off += 4
+	s.invert.PutUint32At(off, version)
+	off += 4
+	s.invert.PutUint64At(off, s.NumDocs)
+	off += 8
 	s.invertList = nil
 	s.docsLength = nil
 	return nil
