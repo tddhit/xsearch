@@ -96,14 +96,13 @@ func (s *shard) indexLoop(topic, channel string) {
 						)
 					}
 				}
-				if err := s.indexer.IndexDocument(doc.Doc); err != nil {
-					log.Error(err)
+				if err := s.indexer.IndexDoc(doc.Doc); err == nil {
+					log.Infof("Type=IndexDoc\tDocID=%s", doc.Doc.ID)
 				}
-				log.Infof("Type=IndexDoc\tDocID=%s", doc.Doc.ID)
 			}
 		case xsearchpb.Command_REMOVE:
 			if docID, ok := cmd.DocOneof.(*xsearchpb.Command_DocID); ok {
-				s.indexer.RemoveDocument(docID.DocID)
+				s.indexer.RemoveDoc(docID.DocID)
 				log.Infof("Type=RemoveDoc\tDocID=%s", docID.DocID)
 			}
 		}

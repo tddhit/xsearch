@@ -44,7 +44,7 @@ func init() {
 }
 
 type segment struct {
-	mu          sync.RWMutex
+	sync.Mutex
 	ID          string
 	CreateTime  int64
 	NumDocs     uint64
@@ -56,8 +56,8 @@ type segment struct {
 	invert      *mmap.MmapFile
 	vocabPath   string
 	invertPath  string
-	persist     int32
-	recycle     bool
+	persistFlag int32
+	recycleFlag bool
 }
 
 func newSegment(vocabPath, invertPath string, mode int) (*segment, error) {
@@ -131,7 +131,10 @@ func validate(invert *mmap.MmapFile) (uint64, int64, error) {
 	return numDocs, int64(ctime), nil
 }
 
-func (s *segment) indexDocument(doc *xsearchpb.Document) error {
+func (s *segment) indexDoc(doc *xsearchpb.Document) {
+	s.Lock()
+	defer s.Unlock()
+
 	var (
 		loc     uint32
 		posting *types.Posting
@@ -154,18 +157,18 @@ func (s *segment) indexDocument(doc *xsearchpb.Document) error {
 		} else {
 			posting.Freq++
 		}
-		//posting.Loc = append(posting.Loc, loc)
 		loc++
 	}
 	docLength := len(doc.Tokens)
 	s.totalLength += uint64(docLength)
 	s.docsLength[doc.ID] = uint32(docLength)
 	s.NumDocs++
-	return nil
 }
 
-func (s *segment) search(query *xsearchpb.Query,
-	start uint64, count int32) (docs []*xsearchpb.Document, err error) {
+func (s *segment) search(
+	query *xsearchpb.Query,
+	start uint64,
+	count int32) (docs []*xsearchpb.Document, err error) {
 
 	doc2BM25 := make(map[string]float32)
 	docHeap := &DocHeap{}
@@ -227,18 +230,13 @@ func (s *segment) lookup(key []byte, doc2BM25 map[string]float32) error {
 	return nil
 }
 
-func (s *segment) persistData() error {
-	if !atomic.CompareAndSwapInt32(&s.persist, 0, 1) {
+func (s *segment) persist() error {
+	if !atomic.CompareAndSwapInt32(&s.persistFlag, 0, 1) {
 		return fmt.Errorf("segment(%s) already persist.", s.ID)
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	log.Infof("Type=Persist\tSegment=%s", s.ID)
 	if s.NumDocs == 0 {
 		return nil
 	}
-
 	var off int64
 	s.avgLength = uint32(s.totalLength / s.NumDocs)
 	for term, postingList := range s.invertList {
@@ -303,9 +301,9 @@ func (s *segment) delete() error {
 }
 
 func (s *segment) close() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
+	if err := s.persist(); err != nil {
+		log.Error(err)
+	}
 	if s.vocab != nil {
 		s.vocab.Close()
 		s.vocab = nil

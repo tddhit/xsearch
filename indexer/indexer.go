@@ -7,15 +7,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
-
-	uuid "github.com/satori/go.uuid"
 
 	"github.com/tddhit/bindex"
 	"github.com/tddhit/tools/log"
@@ -26,26 +23,23 @@ import (
 
 var (
 	defaultOptions = indexerOptions{
-		persistNum:    100000,
-		mergeInterval: 60 * time.Second,
-		dir:           "./",
-		id:            "indexer",
-		shardNum:      runtime.NumCPU(),
+		persistInterval: 10 * time.Second,
+		mergeInterval:   60 * time.Second,
+		mergeNum:        100000,
+		dir:             "./",
+		id:              "indexer",
 	}
 )
 
 type Indexer struct {
-	sync.RWMutex
 	opt        indexerOptions
-	Shards     [][]*segment
-	shardLocks []sync.RWMutex
+	Segments   []*segment
 	segmentID  int32
-	removeDocs sync.Map // TODO: replace with bitmap
-	NumDocs    uint64
-	indexDocC  []chan *xsearchpb.Document
-	indexRspC  []chan error
-	exitC      chan struct{}
+	segmentsMu sync.RWMutex
+	persistMu  sync.RWMutex
+	mergeMu    sync.RWMutex
 	exitMu     sync.RWMutex
+	exitC      chan struct{}
 	exitFlag   int32
 	wg         sync.WaitGroup
 }
@@ -56,14 +50,11 @@ func New(opts ...IndexerOption) (*Indexer, error) {
 		o(&opt)
 	}
 	idx := &Indexer{
-		opt:        opt,
-		Shards:     make([][]*segment, opt.shardNum),
-		shardLocks: make([]sync.RWMutex, opt.shardNum),
-		indexDocC:  make([]chan *xsearchpb.Document, opt.shardNum),
-		indexRspC:  make([]chan error, opt.shardNum),
-		exitC:      make(chan struct{}),
+		opt:   opt,
+		exitC: make(chan struct{}),
 	}
-	if err := os.MkdirAll(idx.opt.dir, 0755); err != nil && !os.IsExist(err) {
+	err := os.MkdirAll(filepath.Join(idx.opt.dir, idx.opt.id), 0755)
+	if err != nil && !os.IsExist(err) {
 		log.Error(err)
 		return nil, err
 	}
@@ -71,306 +62,250 @@ func New(opts ...IndexerOption) (*Indexer, error) {
 		log.Error(err)
 		return nil, err
 	}
-	for i := 0; i < int(idx.opt.shardNum); i++ {
-		idx.shardLocks[i] = sync.RWMutex{}
-		idx.indexDocC[i] = make(chan *xsearchpb.Document)
-		idx.indexRspC[i] = make(chan error)
-		segID := atomic.AddInt32(&idx.segmentID, 1)
-		seg, err := idx.openSegment(mmap.MODE_CREATE, segID)
-		if err != nil {
-			log.Error(err)
-			return nil, err
-		}
-		idx.Shards[i] = append(idx.Shards[i], seg)
-		idx.wg.Add(1)
-		go idx.indexLoop(i)
+	if seg, err := idx.openSegment(mmap.MODE_CREATE, 0); err != nil {
+		log.Error(err)
+		return nil, err
+	} else {
+		idx.Segments = append(idx.Segments, seg)
 	}
-	if idx.opt.persistInterval > 0 {
-		idx.wg.Add(1)
-		go idx.persistLoop()
-	}
-	if idx.opt.mergeInterval > 0 {
-		idx.wg.Add(1)
-		go idx.mergeLoop()
-	}
+	idx.wg.Add(2)
+	go idx.persistLoop()
+	go idx.mergeLoop()
 	return idx, nil
 }
 
 func (idx *Indexer) openSegment(mode int, id int32) (*segment, error) {
-	vocabPath := fmt.Sprintf("%s/%s_%d.vocab", idx.opt.dir, idx.opt.id, id)
-	invertPath := fmt.Sprintf("%s/%s_%d.invert", idx.opt.dir, idx.opt.id, id)
-	switch mode {
-	case mmap.MODE_CREATE:
-		return newSegment(vocabPath, invertPath, mode)
-	case mmap.MODE_RDONLY:
+	if mode == mmap.MODE_CREATE {
+		id = atomic.AddInt32(&idx.segmentID, 1)
+	}
+	vocabPath := fmt.Sprintf("%s/%s/%d.vocab", idx.opt.dir, idx.opt.id, id)
+	invertPath := fmt.Sprintf("%s/%s/%d.invert", idx.opt.dir, idx.opt.id, id)
+	if mode == mmap.MODE_RDONLY {
 		if _, err := os.Stat(vocabPath); err != nil {
 			return nil, err
 		}
 		if _, err := os.Stat(invertPath); err != nil {
 			return nil, err
 		}
-		return newSegment(vocabPath, invertPath, mode)
-	default:
-		return nil, errors.New("invalid mode")
 	}
+	return newSegment(vocabPath, invertPath, mode)
 }
 
 func (idx *Indexer) loadSegments() error {
-	var (
-		segids []int
-		segs   []*segment
-	)
+	var segids []int
 	filepath.Walk(
 		idx.opt.dir,
 		func(path string, info os.FileInfo, err error) error {
 			if strings.HasSuffix(info.Name(), ".vocab") {
 				name := info.Name()
-				s := strings.Split(name[:len(name)-6], "_")
-				if len(s) != 2 {
-					return fmt.Errorf("invalid vocab/invert filename:%s", name)
-				}
-				indexID := s[0]
-				if indexID != idx.opt.id {
-					return fmt.Errorf("invalid vocab/invert filename:%s", name)
-				}
-				segmentID, err := strconv.Atoi(s[1])
-				if err != nil {
+				s := strings.Split(name[:len(name)-6], "/")
+				if segmentID, err := strconv.Atoi(s[len(s)-1]); err != nil {
 					return err
+				} else {
+					segids = append(segids, segmentID)
 				}
-				segids = append(segids, segmentID)
 			}
 			return nil
 		},
 	)
 	sort.Ints(segids)
-	for _, segID := range segids {
-		seg, err := idx.openSegment(mmap.MODE_RDONLY, int32(segID))
-		if err != nil {
+	for _, id := range segids {
+		if seg, err := idx.openSegment(mmap.MODE_RDONLY, int32(id)); err != nil {
 			return err
+		} else {
+			idx.Segments = append(idx.Segments, seg)
+			idx.segmentID = int32(id)
 		}
-		segs = append(segs, seg)
-		idx.segmentID = int32(segID)
-	}
-	idx.shardBalance(segs)
-	return nil
-}
-
-func (idx *Indexer) indexLoop(shardID int) {
-	for {
-		select {
-		case doc := <-idx.indexDocC[shardID]:
-			idx.indexRspC[shardID] <- idx.indexOne(shardID, doc)
-		case <-idx.exitC:
-			goto exit
-		}
-	}
-exit:
-	idx.wg.Done()
-}
-
-func (idx *Indexer) indexOne(shardID int, doc *xsearchpb.Document) error {
-	idx.shardLocks[shardID].RLock()
-	segs := idx.Shards[shardID]
-	seg := segs[len(segs)-1]
-	if err := seg.indexDocument(doc); err != nil {
-		idx.shardLocks[shardID].RUnlock()
-		return err
-	}
-	idx.shardLocks[shardID].RUnlock()
-
-	NumDocs := atomic.LoadUint64(&seg.NumDocs)
-	if idx.opt.persistInterval == 0 && NumDocs >= idx.opt.persistNum {
-		idx.persist(shardID)
 	}
 	return nil
 }
 
-func (idx *Indexer) IndexDocument(doc *xsearchpb.Document) error {
+func (idx *Indexer) IndexDoc(doc *xsearchpb.Document) error {
 	idx.exitMu.RLock()
 	defer idx.exitMu.RUnlock()
 
 	if atomic.LoadInt32(&idx.exitFlag) == 1 {
+		log.Error("Already Close.")
 		return errors.New("Already Close.")
 	}
 
-	id, err := uuid.FromString(doc.ID)
-	if err != nil {
-		log.Error(err)
-		return err
-	}
-	i := util.Hash(id[:]) % uint64(idx.opt.shardNum)
-	log.Infof("doc(%s) is indexed by shard(%d).", doc.GetID(), i)
-	idx.indexDocC[i] <- doc
-	return <-idx.indexRspC[i]
-}
+	idx.mergeMu.RLock()
+	defer idx.mergeMu.RUnlock()
 
-func (idx *Indexer) RemoveDocument(docID string) {
-	idx.removeDocs.Store(docID, struct{}{})
-}
+	idx.persistMu.RLock()
+	defer idx.persistMu.RUnlock()
 
-// TODO: Need internal DocID
-func (idx *Indexer) UpdateDocument(doc *xsearchpb.Document) error {
+	idx.segmentsMu.RLock()
+	seg := idx.Segments[len(idx.Segments)-1]
+	idx.segmentsMu.RUnlock()
+
+	seg.indexDoc(doc)
 	return nil
 }
 
-func (idx *Indexer) Search(query *xsearchpb.Query,
-	start uint64, count int32) ([]*xsearchpb.Document, error) {
+func (idx *Indexer) Search(
+	query *xsearchpb.Query,
+	start uint64,
+	count int32) ([]*xsearchpb.Document, error) {
 
-	shards, n := idx.copy()
+	idx.exitMu.RLock()
+	defer idx.exitMu.RUnlock()
+
+	if atomic.LoadInt32(&idx.exitFlag) == 1 {
+		return nil, errors.New("Already Close.")
+	}
+
+	idx.mergeMu.RLock()
+	defer idx.mergeMu.RUnlock()
+
+	idx.persistMu.RLock()
+	defer idx.persistMu.RUnlock()
+
 	var (
 		wg    sync.WaitGroup
-		docsC = make(chan *xsearchpb.Document, n*count)
-		docs  = make([]*xsearchpb.Document, 0, n*count)
+		docsC = make(chan *xsearchpb.Document, 100*count)
+		docs  = make([]*xsearchpb.Document, 0, 100*count)
 	)
-	for _, segs := range shards {
-		for _, seg := range segs {
-			wg.Add(1)
-			go func(seg *segment) {
-				docs, err := seg.search(query, start, count)
-				if err == nil {
-					for _, doc := range docs {
-						docsC <- doc
-					}
+
+	idx.segmentsMu.RLock()
+	for _, seg := range idx.Segments {
+		wg.Add(1)
+		go func(seg *segment) {
+			if docs, err := seg.search(query, start, count); err == nil {
+				for _, doc := range docs {
+					docsC <- doc
 				}
-				wg.Done()
-			}(seg)
-		}
+			}
+			wg.Done()
+		}(seg)
 	}
+	idx.segmentsMu.RUnlock()
+
 	wg.Wait()
 	close(docsC)
 	for doc := range docsC {
-		if _, ok := idx.removeDocs.Load(doc.ID); ok {
-			continue
-		}
 		docs = append(docs, doc)
 	}
 	return docs, nil
 }
 
-func (idx *Indexer) copy() ([][]*segment, int32) {
-	count := int32(0)
-	shards := make([][]*segment, idx.opt.shardNum)
-	for i := range shards {
-		idx.shardLocks[i].RLock()
-		shards[i] = make([]*segment, len(idx.Shards[i]))
-		for j := range shards[i] {
-			shards[i][j] = idx.Shards[i][j]
-			count++
-		}
-		idx.shardLocks[i].RUnlock()
-	}
-	return shards, count
+func (idx *Indexer) RemoveDoc(docID string) {
 }
 
-func (idx *Indexer) persist(shardID int) error {
-	idx.RLock()
-	defer idx.RUnlock()
-
-	segID := atomic.AddInt32(&idx.segmentID, 1)
-	newSeg, err := idx.openSegment(mmap.MODE_CREATE, segID)
-	if err != nil {
-		return err
-	}
-	idx.shardLocks[shardID].Lock()
-	segs := idx.Shards[shardID]
-	oldSeg := segs[len(segs)-1]
-	// Use idx.shards to avoid append allocation of new variables
-	idx.Shards[shardID] = append(idx.Shards[shardID], newSeg)
-	idx.shardLocks[shardID].Unlock()
-
-	idx.wg.Add(1)
-	go func(seg *segment) {
-		if err := seg.persistData(); err != nil {
-			log.Error(err)
-		}
-		idx.wg.Done()
-	}(oldSeg)
-	return nil
-}
-
-func (idx *Indexer) persistAll() {
+func (idx *Indexer) persist() {
 	idx.exitMu.RLock()
 	defer idx.exitMu.RUnlock()
 
 	if atomic.LoadInt32(&idx.exitFlag) == 1 {
 		return
 	}
-	for i := 0; i < idx.opt.shardNum; i++ {
-		idx.persist(i)
+
+	idx.mergeMu.RLock()
+	defer idx.mergeMu.RUnlock()
+
+	idx.persistMu.Lock()
+	defer idx.persistMu.Unlock()
+
+	idx.segmentsMu.RLock()
+	oldSeg := idx.Segments[len(idx.Segments)-1]
+	idx.segmentsMu.RUnlock()
+
+	idx.wg.Add(1)
+	go func(seg *segment) {
+		if err := seg.persist(); err != nil {
+			log.Error(err)
+		}
+		log.Infof("Type=Persist\tIndexer=%s\tSegment=%s", idx.opt.id, seg.ID)
+		idx.wg.Done()
+	}(oldSeg)
+
+	if newSeg, err := idx.openSegment(mmap.MODE_CREATE, 0); err != nil {
+		return
+	} else {
+		idx.segmentsMu.Lock()
+		idx.Segments = append(idx.Segments, newSeg)
+		idx.segmentsMu.Unlock()
 	}
 }
 
 func (idx *Indexer) mergeSegments() {
-	var (
-		NumDocs   uint64
-		needMerge []*segment
-		newSegs   []*segment
-	)
-	shards, _ := idx.copy()
-	for i, segs := range shards {
-		for j, seg := range segs {
-			merge := false
-			if atomic.LoadInt32(&seg.persist) == 1 {
-				if seg.NumDocs > 0 && seg.NumDocs < idx.opt.persistNum {
-					seg.recycle = true
-					needMerge = append(needMerge, seg)
-					NumDocs += seg.NumDocs
-				} else if seg.NumDocs == 0 {
-					seg.recycle = true
-				}
-			}
-			if NumDocs >= idx.opt.persistNum {
-				merge = true
-			}
-			if i == len(shards)-1 && j == len(segs)-1 {
-				if len(needMerge) > 1 {
-					merge = true
-				} else if len(needMerge) == 1 {
-					needMerge[0].recycle = false
-				}
-			}
-			if merge {
-				newSeg, err := idx.merge(needMerge)
-				if err != nil {
-					log.Error(err)
-					return
-				}
-				newSegs = append(newSegs, newSeg)
-				NumDocs = 0
-				needMerge = needMerge[:0]
-			}
+	idx.exitMu.RLock()
+	defer idx.exitMu.RUnlock()
+
+	if atomic.LoadInt32(&idx.exitFlag) == 1 {
+		return
+	}
+
+	idx.mergeMu.Lock()
+	defer idx.mergeMu.Unlock()
+
+	idx.persistMu.RLock()
+	defer idx.persistMu.RUnlock()
+
+	idx.segmentsMu.RLock()
+	needMerge := idx.pickSegments()
+	idx.segmentsMu.RUnlock()
+
+	var newSegs []*segment
+	for _, segs := range needMerge {
+		if seg, err := idx.merge(segs); err != nil {
+			log.Error(err)
+		} else {
+			newSegs = append(newSegs, seg)
 		}
 	}
-	idx.shardBalance(newSegs)
+
+	idx.segmentsMu.RLock()
+	for _, seg := range idx.Segments {
+		if seg.recycleFlag {
+			seg.delete()
+		} else {
+			newSegs = append(newSegs, seg)
+		}
+	}
+	idx.segmentsMu.RUnlock()
+
+	idx.Segments = newSegs
 }
 
-func (idx *Indexer) shardBalance(newSegs []*segment) {
-	idx.Lock()
-	defer idx.Unlock()
-
-	newShards := make([][]*segment, idx.opt.shardNum)
-	i := 0
-	for _, segs := range idx.Shards {
-		for _, seg := range segs {
-			if seg.recycle {
-				seg.delete()
-			} else {
-				newShards[i] = append(newShards[i], seg)
-				i = (i + 1) % idx.opt.shardNum
+func (idx *Indexer) pickSegments() (res [][]*segment) {
+	var (
+		numDocs   uint64
+		needMerge []*segment
+	)
+	for i, seg := range idx.Segments {
+		merge := false
+		if atomic.LoadInt32(&seg.persistFlag) == 0 {
+			continue
+		}
+		if seg.NumDocs > 0 && seg.NumDocs < idx.opt.mergeNum {
+			seg.recycleFlag = true
+			needMerge = append(needMerge, seg)
+			numDocs += seg.NumDocs
+		} else if seg.NumDocs == 0 {
+			seg.recycleFlag = true
+		}
+		if numDocs >= idx.opt.mergeNum {
+			merge = true
+		}
+		if i == len(idx.Segments)-1 {
+			if len(needMerge) > 1 {
+				merge = true
+			} else if len(needMerge) == 1 {
+				needMerge[0].recycleFlag = false
 			}
 		}
+		if merge {
+			res = append(res, needMerge)
+			needMerge = make([]*segment, 0)
+		}
 	}
-	for _, seg := range newSegs {
-		newShards[i] = append(newShards[i], seg)
-		i = (i + 1) % idx.opt.shardNum
-	}
-	idx.Shards = newShards
+	return
 }
 
 func (idx *Indexer) merge(segs []*segment) (*segment, error) {
 	k := len(segs)
-	segID := atomic.AddInt32(&idx.segmentID, 1)
-	newSeg, err := idx.openSegment(mmap.MODE_CREATE, segID)
+	newSeg, err := idx.openSegment(mmap.MODE_CREATE, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -464,7 +399,7 @@ func (idx *Indexer) persistLoop() {
 	for {
 		select {
 		case <-ticker.C:
-			idx.persistAll()
+			idx.persist()
 		case <-idx.exitC:
 			goto exit
 		}
@@ -481,25 +416,19 @@ func (idx *Indexer) Close() {
 	if !atomic.CompareAndSwapInt32(&idx.exitFlag, 0, 1) {
 		return
 	}
+
+	idx.mergeMu.RLock()
+	defer idx.mergeMu.RUnlock()
+
+	idx.persistMu.RLock()
+	defer idx.persistMu.RUnlock()
+
 	close(idx.exitC)
 	idx.wg.Wait()
-	var wg sync.WaitGroup
-	wg.Add(idx.opt.shardNum)
-	for i := 0; i < idx.opt.shardNum; i++ {
-		go func(i int) {
-			idx.shardLocks[i].Lock()
-			segs := idx.Shards[i]
-			seg := segs[len(segs)-1]
-			if err := seg.persistData(); err != nil {
-				log.Error(err)
-			}
-			for j := range segs {
-				log.Error(i, j, "close")
-				segs[j].close()
-			}
-			idx.shardLocks[i].Unlock()
-			wg.Done()
-		}(i)
+
+	idx.segmentsMu.RLock()
+	for _, seg := range idx.Segments {
+		seg.close()
 	}
-	wg.Wait()
+	idx.segmentsMu.RUnlock()
 }

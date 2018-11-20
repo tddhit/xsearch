@@ -6,7 +6,6 @@ import (
 	"path"
 	"sort"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -91,23 +90,21 @@ func (r *Resource) marshalTo(rsp *searchdpb.InfoRsp) {
 		pbs := &searchdpb.InfoRsp_Shard{
 			ID: resourceShard.id,
 		}
-		for _, indexShard := range resourceShard.indexer.Shards {
-			for _, seg := range indexShard {
-				id, _ := strconv.Atoi(strings.Split(seg.ID, "_")[1])
-				segments = append(segments, &segment{
-					id: id,
-					info: fmt.Sprintf(
-						"ctime=%s    id=%-10dnum=%d",
-						time.Unix(
-							seg.CreateTime/int64(time.Second),
-							seg.CreateTime%int64(time.Second),
-						).Format("2006-01-02 15:04:05"),
-						id,
-						seg.NumDocs,
-					),
-				})
-				pbs.NumDocs += seg.NumDocs
-			}
+		for _, seg := range resourceShard.indexer.Segments {
+			id, _ := strconv.Atoi(seg.ID)
+			segments = append(segments, &segment{
+				id: id,
+				info: fmt.Sprintf(
+					"ctime=%s    id=%-10dnum=%d",
+					time.Unix(
+						seg.CreateTime/int64(time.Second),
+						seg.CreateTime%int64(time.Second),
+					).Format("2006-01-02 15:04:05"),
+					id,
+					seg.NumDocs,
+				),
+			})
+			pbs.NumDocs += seg.NumDocs
 		}
 		sort.Slice(segments, func(i, j int) bool {
 			return segments[i].id < segments[j].id

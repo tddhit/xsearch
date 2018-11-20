@@ -3,7 +3,7 @@ package indexer
 import "time"
 
 type indexerOptions struct {
-	persistNum      uint64
+	mergeNum        uint64
 	persistInterval time.Duration
 	mergeInterval   time.Duration
 	dir             string
@@ -13,9 +13,9 @@ type indexerOptions struct {
 
 type IndexerOption func(*indexerOptions)
 
-func WithPersistNum(n int) IndexerOption {
+func WithMergeNum(n int) IndexerOption {
 	return func(o *indexerOptions) {
-		o.persistNum = uint64(n)
+		o.mergeNum = uint64(n)
 	}
 }
 
