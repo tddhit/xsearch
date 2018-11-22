@@ -26,7 +26,7 @@ var (
 		persistInterval: 10 * time.Second,
 		mergeInterval:   60 * time.Second,
 		mergeNum:        100000,
-		dir:             "./",
+		dir:             "./data/indexer/",
 		id:              "indexer",
 	}
 )
@@ -53,13 +53,11 @@ func New(opts ...IndexerOption) (*Indexer, error) {
 		opt:   opt,
 		exitC: make(chan struct{}),
 	}
-	err := os.MkdirAll(filepath.Join(idx.opt.dir, idx.opt.id), 0755)
-	if err != nil && !os.IsExist(err) {
+	if err := os.MkdirAll(idx.opt.dir, 0755); err != nil && !os.IsExist(err) {
 		log.Error(err)
 		return nil, err
 	}
 	if err := idx.loadSegments(); err != nil {
-		log.Error(err)
 		return nil, err
 	}
 	if seg, err := idx.openSegment(mmap.MODE_CREATE, 0); err != nil {
@@ -68,9 +66,14 @@ func New(opts ...IndexerOption) (*Indexer, error) {
 	} else {
 		idx.Segments = append(idx.Segments, seg)
 	}
-	idx.wg.Add(2)
-	go idx.persistLoop()
-	go idx.mergeLoop()
+	if idx.opt.persistInterval > 0 {
+		idx.wg.Add(1)
+		go idx.persistLoop()
+	}
+	if idx.opt.mergeInterval > 0 && idx.opt.mergeNum > 0 {
+		idx.wg.Add(1)
+		go idx.mergeLoop()
+	}
 	return idx, nil
 }
 
@@ -78,13 +81,15 @@ func (idx *Indexer) openSegment(mode int, id int32) (*segment, error) {
 	if mode == mmap.MODE_CREATE {
 		id = atomic.AddInt32(&idx.segmentID, 1)
 	}
-	vocabPath := fmt.Sprintf("%s/%s/%d.vocab", idx.opt.dir, idx.opt.id, id)
-	invertPath := fmt.Sprintf("%s/%s/%d.invert", idx.opt.dir, idx.opt.id, id)
+	vocabPath := fmt.Sprintf("%s/%d.vocab", idx.opt.dir, id)
+	invertPath := fmt.Sprintf("%s/%d.invert", idx.opt.dir, id)
 	if mode == mmap.MODE_RDONLY {
 		if _, err := os.Stat(vocabPath); err != nil {
+			log.Error(err)
 			return nil, err
 		}
 		if _, err := os.Stat(invertPath); err != nil {
+			log.Error(err)
 			return nil, err
 		}
 	}
@@ -100,6 +105,7 @@ func (idx *Indexer) loadSegments() error {
 				name := info.Name()
 				s := strings.Split(name[:len(name)-6], "/")
 				if segmentID, err := strconv.Atoi(s[len(s)-1]); err != nil {
+					log.Error(err)
 					return err
 				} else {
 					segids = append(segids, segmentID)
@@ -428,6 +434,7 @@ func (idx *Indexer) Close() {
 
 	idx.segmentsMu.RLock()
 	for _, seg := range idx.Segments {
+		seg.persist()
 		seg.close()
 	}
 	idx.segmentsMu.RUnlock()

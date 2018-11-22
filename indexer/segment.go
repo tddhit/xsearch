@@ -81,7 +81,7 @@ func newSegment(vocabPath, invertPath string, mode int) (*segment, error) {
 			return nil, err
 		} else {
 			numDocs = num
-			createTime = ctime
+			createTime = int64(ctime)
 		}
 	}
 	s := strings.Split(vocabPath[:len(vocabPath)-6], "/")
@@ -98,37 +98,61 @@ func newSegment(vocabPath, invertPath string, mode int) (*segment, error) {
 	}, nil
 }
 
-func validate(invert *mmap.MmapFile) (uint64, int64, error) {
+func validate(invert *mmap.MmapFile) (numDocs, ctime uint64, err error) {
+	log.Trace(2, invert.Size())
 	var tailer int64 = 40
 	if invert.Size() < tailer {
 		return 0, 0, fmt.Errorf("Invalid invert size: %d", invert.Size())
 	}
 	buf := (*[maxMapSize]byte)(invert.Buf(0))
 	checksum := md5.Sum((*buf)[:invert.Size()-tailer])
-	v, err := invert.ReadAt(invert.Size()-tailer, 16)
-	if err != nil || bytes.Compare(v, checksum[:]) != 0 {
-		return 0, 0, fmt.Errorf("check checksum fail. %x, %s", v, err.Error())
+	c, err := invert.ReadAt(invert.Size()-tailer, 16)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	log.Errorf("check checksum fail:%x,%x", c, checksum[:])
+	if bytes.Compare(c, checksum[:]) != 0 {
+		err = fmt.Errorf("check checksum fail:%x,%x", c, checksum[:])
+		log.Error(err)
+		return
 	}
 	tailer -= 16
-	if v, err := invert.Uint32At(invert.Size() - tailer); err != nil || v != magic {
-		return 0, 0, fmt.Errorf("check magic fail. %x, %s", v, err.Error())
+	m, err := invert.Uint32At(invert.Size() - tailer)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	if m != magic {
+		err = fmt.Errorf("check magic fail:%x", m)
+		log.Error(err)
+		return
 	}
 	tailer -= 4
-	if v, err := invert.Uint32At(invert.Size() - tailer); err != nil || v != version {
-		return 0, 0, fmt.Errorf("check version fail. %d, %s", v, err.Error())
+	v, err := invert.Uint32At(invert.Size() - tailer)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	if v != version {
+		err = fmt.Errorf("check version fail:%d", v)
+		log.Error(err)
+		return
 	}
 	tailer -= 4
-	numDocs, err := invert.Uint64At(invert.Size() - tailer)
+	numDocs, err = invert.Uint64At(invert.Size() - tailer)
 	if err != nil {
-		return 0, 0, err
+		log.Error(err)
+		return
 	}
 	tailer -= 8
-	ctime, err := invert.Uint64At(invert.Size() - tailer)
+	ctime, err = invert.Uint64At(invert.Size() - tailer)
 	if err != nil {
-		return 0, 0, err
+		log.Error(err)
+		return
 	}
 	tailer -= 8
-	return numDocs, int64(ctime), nil
+	return
 }
 
 func (s *segment) indexDoc(doc *xsearchpb.Document) {
@@ -231,6 +255,9 @@ func (s *segment) lookup(key []byte, doc2BM25 map[string]float32) error {
 }
 
 func (s *segment) persist() error {
+	s.Lock()
+	defer s.Unlock()
+
 	if !atomic.CompareAndSwapInt32(&s.persistFlag, 0, 1) {
 		return fmt.Errorf("segment(%s) already persist.", s.ID)
 	}
@@ -265,7 +292,8 @@ func (s *segment) persist() error {
 	}
 	buf := (*[maxMapSize]byte)(s.invert.Buf(0))
 	checksum := md5.Sum((*buf)[:off])
-	s.invert.WriteAt(checksum[:], 16)
+	s.invert.WriteAt(checksum[:], off)
+	log.Tracef(2, "checksum:%x", checksum[:])
 	off += 16
 	s.invert.PutUint32At(off, magic)
 	off += 4
@@ -273,37 +301,29 @@ func (s *segment) persist() error {
 	off += 4
 	s.invert.PutUint64At(off, s.NumDocs)
 	off += 8
+	s.invert.PutUint64At(off, uint64(s.CreateTime))
+	off += 8
 	s.invertList = nil
 	s.docsLength = nil
+	log.Trace(2, "compact start", off)
+	if err := s.invert.Compact(); err != nil {
+		log.Error(err)
+		return err
+	}
+	log.Trace(2, "compact end", s.invert.Size())
 	return nil
 }
 
-func (s *segment) delete() error {
-	if s.vocab != nil {
-		if err := s.vocab.Close(); err != nil {
-			return err
-		}
-		if err := os.Remove(s.vocabPath); err != nil {
-			return err
-		}
-		s.vocab = nil
-	}
-	if s.invert != nil {
-		if err := s.invert.Close(); err != nil {
-			return err
-		}
-		if err := os.Remove(s.invertPath); err != nil {
-			return err
-		}
-		s.invert = nil
-	}
-	return nil
+func (s *segment) delete() {
+	s.close()
+	os.Remove(s.vocabPath)
+	os.Remove(s.invertPath)
 }
 
 func (s *segment) close() {
-	if err := s.persist(); err != nil {
-		log.Error(err)
-	}
+	s.Lock()
+	defer s.Unlock()
+
 	if s.vocab != nil {
 		s.vocab.Close()
 		s.vocab = nil

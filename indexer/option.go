@@ -3,12 +3,11 @@ package indexer
 import "time"
 
 type indexerOptions struct {
-	mergeNum        uint64
 	persistInterval time.Duration
 	mergeInterval   time.Duration
+	mergeNum        uint64
 	dir             string
 	id              string
-	shardNum        int
 }
 
 type IndexerOption func(*indexerOptions)
@@ -40,11 +39,5 @@ func WithDir(dir string) IndexerOption {
 func WithID(id string) IndexerOption {
 	return func(o *indexerOptions) {
 		o.id = id
-	}
-}
-
-func WithShardNum(num int) IndexerOption {
-	return func(o *indexerOptions) {
-		o.shardNum = num
 	}
 }
