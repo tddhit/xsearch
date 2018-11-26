@@ -85,6 +85,7 @@ func (s *service) RegisterNode(stream metadpb.Metad_RegisterNodeServer) error {
 	if err != nil {
 		return status.Error(codes.Internal, err.Error())
 	}
+	n.readC <- req
 	go func() {
 		for {
 			req, err := stream.Recv()
@@ -95,7 +96,7 @@ func (s *service) RegisterNode(stream metadpb.Metad_RegisterNodeServer) error {
 			n.readC <- req
 		}
 	}()
-	n.ioLoop(s.ctx, stream, s.resource)
+	n.ioLoop(s.ctx, stream, s.resource, s.reception)
 	s.resource.removeNode(n.addr)
 	s.resource.rangeTables(func(table *shardTable) error {
 		if _, ok := table.getNode(n.addr); !ok {

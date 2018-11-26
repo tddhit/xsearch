@@ -78,7 +78,7 @@ func (n *node) getInfo() string {
 	}
 }
 
-func (n *node) readLoop(ctx context.Context, r *resource) {
+func (n *node) readLoop(ctx context.Context, res *resource, rec *reception) {
 	timer := time.NewTimer(3 * time.Second)
 	for {
 		select {
@@ -87,7 +87,8 @@ func (n *node) readLoop(ctx context.Context, r *resource) {
 			if req == nil || req.Type == metadpb.RegisterNodeReq_Heartbeat {
 				continue
 			}
-			shard, err := r.getShard(
+			log.Trace(2, *req)
+			shard, err := res.getShard(
 				req.Namespace,
 				int(req.GroupID),
 				int(req.ReplicaID),
@@ -96,12 +97,22 @@ func (n *node) readLoop(ctx context.Context, r *resource) {
 				log.Error(err)
 				continue
 			}
+			table, ok := res.getTable(req.Namespace)
+			if !ok {
+				log.Errorf("not found namespace %s", req.Namespace)
+				continue
+			}
+			log.Trace(2, shard.id)
 			switch req.Type {
 			case metadpb.RegisterNodeReq_PutShardOnline:
 				if shard.node.addr == req.Addr &&
 					shard.node.status == NODE_CLUSTER_OFFLINE {
 
+					shard.node = n
 					shard.node.status = NODE_CLUSTER_ONLINE
+					table.removeNode(n.addr)
+					table.addNode(n)
+					rec.notifyByNamespace(req.Namespace, table.marshal())
 				}
 			case metadpb.RegisterNodeReq_RegisterShard:
 				if shard.next.addr != req.Addr {
@@ -145,13 +156,16 @@ func (n *node) writeLoop(ctx context.Context,
 exit:
 }
 
-func (n *node) ioLoop(ctx context.Context,
-	stream metadpb.Metad_RegisterNodeServer, r *resource) {
+func (n *node) ioLoop(
+	ctx context.Context,
+	stream metadpb.Metad_RegisterNodeServer,
+	res *resource,
+	rec *reception) {
 
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
-		n.readLoop(ctx, r)
+		n.readLoop(ctx, res, rec)
 		wg.Done()
 	}()
 	go func() {

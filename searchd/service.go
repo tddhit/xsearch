@@ -92,6 +92,7 @@ func (s *service) registerNode(addr string) error {
 		return err
 	}
 	s.resource.rangeShards(func(s *shard) error {
+		log.Trace(2, s.id)
 		err := stream.Send(&metadpb.RegisterNodeReq{
 			Type:      metadpb.RegisterNodeReq_PutShardOnline,
 			Addr:      addr,
@@ -205,4 +206,9 @@ func (s *service) Search(ctx context.Context,
 	return &searchdpb.SearchRsp{
 		Docs: docs,
 	}, nil
+}
+
+func (s *service) Close() {
+	log.Trace(2, "close")
+	s.resource.close()
 }

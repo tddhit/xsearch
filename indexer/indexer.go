@@ -416,6 +416,7 @@ exit:
 }
 
 func (idx *Indexer) Close() {
+	log.Trace(2, "close")
 	idx.exitMu.RLock()
 	defer idx.exitMu.RUnlock()
 
@@ -436,6 +437,7 @@ func (idx *Indexer) Close() {
 	for _, seg := range idx.Segments {
 		seg.persist()
 		if seg.NumDocs == 0 {
+			log.Trace(2, "delete")
 			seg.delete()
 		} else {
 			seg.close()

@@ -80,6 +80,7 @@ func startSearchd(ctx *cli.Context) {
 		tropt.WithUnaryServerMiddleware(
 			searchd.CheckParams(svc),
 		),
+		tropt.WithAfterClose(svc.Close),
 	)
 	if err != nil {
 		log.Fatal(err)

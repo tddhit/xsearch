@@ -42,6 +42,7 @@ func startMetad(ctx *cli.Context) {
 		tropt.WithUnaryServerMiddleware(
 			metad.CheckParams(svc),
 		),
+		tropt.WithBeforeClose(svc.Close),
 	)
 	if err != nil {
 		log.Fatal(err)

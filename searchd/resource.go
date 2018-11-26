@@ -25,6 +25,7 @@ var (
 
 type Resource struct {
 	sync.RWMutex
+	once   sync.Once
 	dir    string
 	shards map[string]*shard
 }
@@ -165,4 +166,21 @@ func (r *Resource) marshalTo(rsp *searchdpb.InfoRsp) {
 		}
 		rsp.Shards = append(rsp.Shards, pbs)
 	}
+}
+
+func (r *Resource) close() {
+	log.Trace(2, "close")
+	r.RLock()
+	defer r.RUnlock()
+	log.Trace(2, "close")
+
+	r.once.Do(func() {
+		log.Trace(2, "close")
+		for _, shard := range r.shards {
+			log.Trace(2, "close")
+			shard.close()
+		}
+		log.Trace(2, "close")
+	})
+	log.Trace(2, "close")
 }

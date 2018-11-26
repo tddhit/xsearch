@@ -111,7 +111,6 @@ func validate(invert *mmap.MmapFile) (numDocs, ctime uint64, err error) {
 		log.Error(err)
 		return
 	}
-	log.Errorf("check checksum fail:%x,%x", c, checksum[:])
 	if bytes.Compare(c, checksum[:]) != 0 {
 		err = fmt.Errorf("check checksum fail:%x,%x", c, checksum[:])
 		log.Error(err)
