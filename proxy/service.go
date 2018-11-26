@@ -87,16 +87,22 @@ func (s *service) watchShardTable(stream metadpb.Metad_RegisterClientClient) {
 			log.Error(err)
 			return
 		}
+		log.Trace(2, *(rsp.Table))
 		table := s.resource.updateTable(
 			rsp.Table.Namespace,
 			int(rsp.Table.ShardNum),
 			int(rsp.Table.ReplicaFactor),
 		)
 		for _, ss := range rsp.Table.Shards {
-			n, err := s.resource.getOrCreateNode(ss.NodeAddr, ss.NodeStatus)
-			if err != nil {
-				log.Error(err)
-				continue
+			n, _ := s.resource.getOrCreateNode(ss.NodeAddr)
+			switch ss.NodeStatus {
+			case "online":
+				n.setStatus(nodeOnline)
+				if err := n.connect(); err != nil {
+					n.setStatus(nodeConnectFail)
+				}
+			case "offline":
+				n.setStatus(nodeOffline)
 			}
 			table.setShard(
 				&shard{
@@ -242,7 +248,7 @@ func (s *service) Search(
 			for {
 				tryCount++
 				shard, _ = table.getShard(i, int(replicaID)%table.replicaFactor)
-				if shard.node.status == "online" {
+				if shard.node.isOnline() {
 					log.Debugf("Type=Search\tTraceID=%s\tQuery=%s\tShard=%s",
 						req.TraceID, req.Query.Raw, shard.id)
 					break
@@ -268,8 +274,10 @@ func (s *service) Search(
 	}
 	wg.Wait()
 	for _, rsp := range rsps {
-		for _, doc := range rsp.Docs {
-			docs = append(docs, doc)
+		if rsp != nil {
+			for _, doc := range rsp.Docs {
+				docs = append(docs, doc)
+			}
 		}
 	}
 	rerankArgs := &xsearchpb.RerankArgs{

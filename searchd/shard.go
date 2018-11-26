@@ -3,6 +3,7 @@ package searchd
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -18,6 +19,9 @@ import (
 
 type shard struct {
 	id        string
+	namespace string
+	groupID   int
+	replicaID int
 	indexer   *indexer.Indexer
 	segmenter *jiebago.Segmenter
 	stopwords map[string]struct{}
@@ -35,10 +39,29 @@ func newShard(
 	stopwords map[string]struct{},
 	c diskqueuepb.DiskqueueGrpcClient) (*shard, error) {
 
+	v := strings.Split(id, ".")
+	if len(v) != 3 {
+		err := fmt.Errorf("invalid shardID:%s", id)
+		log.Error(err)
+		return nil, err
+	}
+	namespace := v[0]
+	groupID, err := strconv.Atoi(v[1])
+	if err != nil {
+		err := fmt.Errorf("invalid shardID:%s", id)
+		log.Error(err)
+		return nil, err
+	}
+	replicaID, err := strconv.Atoi(v[2])
+	if err != nil {
+		err := fmt.Errorf("invalid shardID:%s", id)
+		log.Error(err)
+		return nil, err
+	}
 	i, err := indexer.New(
 		indexer.WithDir(dir),
 		indexer.WithID(id),
-		indexer.WithMergeInterval(120*time.Second),
+		indexer.WithMergeInterval(1200*time.Second),
 		indexer.WithPersistInterval(10*time.Second),
 	)
 	if err != nil {
@@ -46,6 +69,9 @@ func newShard(
 	}
 	s := &shard{
 		id:        id,
+		namespace: namespace,
+		groupID:   groupID,
+		replicaID: replicaID,
 		indexer:   i,
 		segmenter: segmenter,
 		stopwords: stopwords,
@@ -53,11 +79,8 @@ func newShard(
 	}
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.wg.Add(1)
-	v := strings.Split(id, ".")
-	if len(v) != 3 {
-		return nil, fmt.Errorf("invalid shardID:%s", id)
-	}
-	topic, channel := fmt.Sprintf("%s.%s", v[0], v[1]), addr
+	topic, channel := fmt.Sprintf("%s.%d", s.namespace, s.groupID), addr
+	log.Debug(topic, channel)
 	go func() {
 		s.indexLoop(topic, channel)
 		s.wg.Done()

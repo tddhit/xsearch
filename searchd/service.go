@@ -3,6 +3,7 @@ package searchd
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -76,6 +77,9 @@ func NewService(ctx *cli.Context, r *Resource) *service {
 		stopwords: stopwords,
 		exitC:     make(chan struct{}),
 	}
+	if err := r.loadShards(s.addr, segmenter, stopwords, diskq); err != nil {
+		log.Fatal(err)
+	}
 	if err := s.registerNode(s.addr); err != nil {
 		log.Fatal(err)
 	}
@@ -87,6 +91,19 @@ func (s *service) registerNode(addr string) error {
 	if err != nil {
 		return err
 	}
+	s.resource.rangeShards(func(s *shard) error {
+		err := stream.Send(&metadpb.RegisterNodeReq{
+			Type:      metadpb.RegisterNodeReq_PutShardOnline,
+			Addr:      addr,
+			Namespace: s.namespace,
+			GroupID:   uint32(s.groupID),
+			ReplicaID: uint32(s.replicaID),
+		})
+		if err != nil {
+			log.Error(err)
+		}
+		return err
+	})
 	go s.waitCommand(addr, stream)
 	go s.keepAliveWithMetad(addr, stream)
 	return nil
@@ -105,7 +122,7 @@ func (s *service) waitCommand(addr string, stream metadpb.Metad_RegisterNodeClie
 		switch rsp.Type {
 		case metadpb.RegisterNodeRsp_CreateShard:
 			_, err := s.resource.createShard(
-				rsp.ShardID,
+				fmt.Sprintf("%s.%d.%d", rsp.Namespace, rsp.GroupID, rsp.ReplicaID),
 				s.addr,
 				s.segmenter,
 				s.stopwords,
@@ -116,21 +133,26 @@ func (s *service) waitCommand(addr string, stream metadpb.Metad_RegisterNodeClie
 				continue
 			}
 			err = stream.Send(&metadpb.RegisterNodeReq{
-				Type:    metadpb.RegisterNodeReq_RegisterShard,
-				Addr:    addr,
-				ShardID: rsp.ShardID,
+				Type:      metadpb.RegisterNodeReq_RegisterShard,
+				Addr:      addr,
+				Namespace: rsp.Namespace,
+				GroupID:   rsp.GroupID,
+				ReplicaID: rsp.ReplicaID,
 			})
 			if err != nil {
 				log.Error(err)
 			}
 		case metadpb.RegisterNodeRsp_RemoveShard:
-			if err := s.resource.removeShard(rsp.ShardID); err != nil {
+			id := fmt.Sprintf("%s.%s.%s", rsp.Namespace, rsp.GroupID, rsp.ReplicaID)
+			if err := s.resource.removeShard(id); err != nil {
 				log.Error(err)
 			}
 			err := stream.Send(&metadpb.RegisterNodeReq{
-				Type:    metadpb.RegisterNodeReq_UnregisterShard,
-				Addr:    addr,
-				ShardID: rsp.ShardID,
+				Type:      metadpb.RegisterNodeReq_UnregisterShard,
+				Addr:      addr,
+				Namespace: rsp.Namespace,
+				GroupID:   rsp.GroupID,
+				ReplicaID: rsp.ReplicaID,
 			})
 			if err != nil {
 				log.Error(err)

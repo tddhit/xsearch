@@ -8,8 +8,8 @@ import (
 	"sync"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/tddhit/tools/log"
 
+	"github.com/tddhit/tools/log"
 	"github.com/tddhit/xsearch/metad/pb"
 )
 
@@ -66,6 +66,11 @@ func (t *shardTable) addNode(n *node) error {
 
 func (t *shardTable) removeNode(addr string) {
 	delete(t.prepare, addr)
+}
+
+func (t *shardTable) getNode(addr string) (*node, bool) {
+	n, ok := t.prepare[addr]
+	return n, ok
 }
 
 func (t *shardTable) setShard(s *shard) error {
@@ -202,10 +207,12 @@ func (t *shardTable) persist(path string) {
 	}
 }
 
-func (t *shardTable) marshalTo(meta *metadpb.Metadata) {
-	meta.Namespace = t.namespace
-	meta.ShardNum = uint32(t.shardNum)
-	meta.ReplicaFactor = uint32(t.replicaFactor)
+func (t *shardTable) marshal() *metadpb.Metadata {
+	meta := &metadpb.Metadata{
+		Namespace:     t.namespace,
+		ShardNum:      uint32(t.shardNum),
+		ReplicaFactor: uint32(t.replicaFactor),
+	}
 	for _, group := range t.groups {
 		for _, replica := range group.replicas {
 			meta.Shards = append(meta.Shards, &metadpb.Metadata_Shard{
@@ -216,6 +223,7 @@ func (t *shardTable) marshalTo(meta *metadpb.Metadata) {
 			})
 		}
 	}
+	return meta
 }
 
 func newShard(namespace string, groupID, replicaID int) *shard {

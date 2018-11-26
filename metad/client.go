@@ -1,6 +1,7 @@
 package metad
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -25,16 +26,15 @@ func newClient(addr, namespace string) *client {
 	}
 }
 
-func (c *client) readLoop() {
+func (c *client) readLoop(ctx context.Context) {
 	timer := time.NewTimer(3 * time.Second)
 	for {
 		select {
-		case req := <-c.readC:
-			if req == nil {
-				goto exit
-			}
+		case <-c.readC:
 			timer.Reset(3 * time.Second)
 		case <-timer.C:
+			goto exit
+		case <-ctx.Done():
 			goto exit
 		}
 	}
@@ -43,29 +43,40 @@ exit:
 	c.close()
 }
 
-func (c *client) writeLoop(stream metadpb.Metad_RegisterClientServer) {
+func (c *client) writeLoop(ctx context.Context,
+	stream metadpb.Metad_RegisterClientServer) {
+
 	for {
-		rsp := <-c.writeC
-		if rsp == nil {
-			goto exit
-		}
-		if err := stream.Send(rsp); err != nil {
-			log.Error(err)
+		select {
+		case rsp, ok := <-c.writeC:
+			if !ok {
+				goto exit
+			}
+			if rsp != nil {
+				log.Trace(2, *(rsp.Table))
+				if err := stream.Send(rsp); err != nil {
+					log.Error(err)
+				}
+			}
+		case <-ctx.Done():
 			goto exit
 		}
 	}
 exit:
 }
 
-func (c *client) ioLoop(stream metadpb.Metad_RegisterClientServer) {
+func (c *client) ioLoop(
+	ctx context.Context,
+	stream metadpb.Metad_RegisterClientServer) {
+
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
-		c.readLoop()
+		c.readLoop(ctx)
 		wg.Done()
 	}()
 	go func() {
-		c.writeLoop(stream)
+		c.writeLoop(ctx, stream)
 		wg.Done()
 	}()
 	wg.Wait()

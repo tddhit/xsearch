@@ -1,8 +1,7 @@
 package metad
 
 import (
-	"strconv"
-	"strings"
+	"context"
 	"sync"
 	"time"
 
@@ -79,52 +78,44 @@ func (n *node) getInfo() string {
 	}
 }
 
-func (n *node) readLoop(r *resource) {
+func (n *node) readLoop(ctx context.Context, r *resource) {
 	timer := time.NewTimer(3 * time.Second)
 	for {
 		select {
 		case req := <-n.readC:
-			if req == nil {
-				goto exit
-			}
 			timer.Reset(3 * time.Second)
-			v := strings.Split(req.ShardID, ".")
-			if len(v) != 3 {
+			if req == nil || req.Type == metadpb.RegisterNodeReq_Heartbeat {
 				continue
 			}
-			namespace := v[0]
-			groupID, err := strconv.Atoi(v[1])
-			if err != nil {
-				log.Error(err)
-				continue
-			}
-			replicaID, err := strconv.Atoi(v[2])
+			shard, err := r.getShard(
+				req.Namespace,
+				int(req.GroupID),
+				int(req.ReplicaID),
+			)
 			if err != nil {
 				log.Error(err)
 				continue
 			}
 			switch req.Type {
-			case metadpb.RegisterNodeReq_RegisterShard:
-				shard, err := r.getShard(namespace, groupID, replicaID)
-				if err != nil {
-					log.Debug(err)
-					break
+			case metadpb.RegisterNodeReq_PutShardOnline:
+				if shard.node.addr == req.Addr &&
+					shard.node.status == NODE_CLUSTER_OFFLINE {
+
+					shard.node.status = NODE_CLUSTER_ONLINE
 				}
+			case metadpb.RegisterNodeReq_RegisterShard:
 				if shard.next.addr != req.Addr {
 					log.Errorf("no match: %s != %s", shard.next.addr, req.Addr)
-					break
+					continue
 				}
 				shard.execTodo()
 			case metadpb.RegisterNodeReq_UnregisterShard:
-				shard, err := r.getShard(namespace, groupID, replicaID)
-				if err != nil {
-					break
-				}
 				shard.execTodo()
-			case metadpb.RegisterNodeReq_Heartbeat:
-				log.Debug("heartbeat")
 			}
 		case <-timer.C:
+			log.Errorf("%s Heartbeat Timeout", n.addr)
+			goto exit
+		case <-ctx.Done():
 			goto exit
 		}
 	}
@@ -133,29 +124,38 @@ exit:
 	n.close()
 }
 
-func (n *node) writeLoop(stream metadpb.Metad_RegisterNodeServer) {
+func (n *node) writeLoop(ctx context.Context,
+	stream metadpb.Metad_RegisterNodeServer) {
+
 	for {
-		rsp := <-n.writeC
-		if rsp == nil {
-			goto exit
-		}
-		if err := stream.Send(rsp); err != nil {
-			log.Error(err)
+		select {
+		case rsp, ok := <-n.writeC:
+			if !ok {
+				goto exit
+			}
+			if rsp != nil {
+				if err := stream.Send(rsp); err != nil {
+					log.Error(err)
+				}
+			}
+		case <-ctx.Done():
 			goto exit
 		}
 	}
 exit:
 }
 
-func (n *node) ioLoop(stream metadpb.Metad_RegisterNodeServer, r *resource) {
+func (n *node) ioLoop(ctx context.Context,
+	stream metadpb.Metad_RegisterNodeServer, r *resource) {
+
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
-		n.readLoop(r)
+		n.readLoop(ctx, r)
 		wg.Done()
 	}()
 	go func() {
-		n.writeLoop(stream)
+		n.writeLoop(ctx, stream)
 		wg.Done()
 	}()
 	wg.Wait()
@@ -170,6 +170,7 @@ func (n *node) close() {
 		close(n.writeC)
 		n.writeC = nil
 	}
+	log.Trace(2, n.status)
 	if n.status == NODE_CLUSTER_ONLINE {
 		n.status = NODE_CLUSTER_OFFLINE
 	}

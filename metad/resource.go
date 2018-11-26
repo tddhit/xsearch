@@ -45,6 +45,14 @@ func newResource(dataDir string) *resource {
 	return r
 }
 
+func (r *resource) rangeTables(f func(*shardTable) error) {
+	for _, table := range r.tables {
+		if err := f(table); err != nil {
+			break
+		}
+	}
+}
+
 func (r *resource) getNode(addr string) (*node, bool) {
 	n, ok := r.nodes[addr]
 	return n, ok
@@ -131,6 +139,7 @@ func (r *resource) getShard(
 	return shard, nil
 }
 
+/*
 func (r *resource) activeShards(n *node) {
 	for _, table := range r.tables {
 		for _, group := range table.groups {
@@ -142,6 +151,7 @@ func (r *resource) activeShards(n *node) {
 		}
 	}
 }
+*/
 
 func (r *resource) marshalTo(res *metadpb.Resource) {
 	res.Tables = make(map[string]*metadpb.Resource_Table)

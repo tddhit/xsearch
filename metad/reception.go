@@ -2,9 +2,11 @@ package metad
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
-	metadpb "github.com/tddhit/xsearch/metad/pb"
+	"github.com/tddhit/tools/log"
+	"github.com/tddhit/xsearch/metad/pb"
 )
 
 type reception struct {
@@ -46,6 +48,20 @@ func (r *reception) getOrCreateClient(namespace, addr string) (*client, bool) {
 	r.Unlock()
 
 	return c, true
+}
+
+func (r *reception) notifyByNamespace(namespace string, meta *metadpb.Metadata) {
+	r.RLock()
+	defer r.RUnlock()
+
+	for key, c := range r.clients {
+		if strings.HasPrefix(key, namespace) {
+			log.Trace(2, *meta)
+			c.writeC <- &metadpb.RegisterClientRsp{
+				Table: meta,
+			}
+		}
+	}
 }
 
 func (r *reception) broadcast(meta *metadpb.Metadata) {

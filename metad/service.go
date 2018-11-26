@@ -10,22 +10,28 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/tddhit/box/mw"
+	"github.com/tddhit/tools/log"
 	"github.com/tddhit/xsearch/metad/pb"
 )
 
 type service struct {
 	reception *reception
 	resource  *resource
+	ctx       context.Context
+	cancel    context.CancelFunc
 }
 
-func NewService(ctx *cli.Context) *service {
+func NewService(params *cli.Context) *service {
 	if !mw.IsWorker() {
 		return nil
 	}
-	dataDir := ctx.String("datadir")
+	dataDir := params.String("datadir")
+	ctx, cancel := context.WithCancel(context.Background())
 	return &service{
 		reception: newReception(),
 		resource:  newResource(dataDir),
+		ctx:       ctx,
+		cancel:    cancel,
 	}
 }
 
@@ -53,13 +59,17 @@ func (s *service) RegisterClient(stream metadpb.Metad_RegisterClientServer) erro
 		for {
 			req, err := stream.Recv()
 			if err != nil {
-				client.close()
 				return
 			}
 			client.readC <- req
 		}
 	}()
-	client.ioLoop(stream)
+	if table, ok := s.resource.getTable(req.Namespace); ok {
+		client.writeC <- &metadpb.RegisterClientRsp{
+			Table: table.marshal(),
+		}
+	}
+	client.ioLoop(s.ctx, stream)
 	return nil
 }
 
@@ -79,15 +89,23 @@ func (s *service) RegisterNode(stream metadpb.Metad_RegisterNodeServer) error {
 		for {
 			req, err := stream.Recv()
 			if err != nil {
-				n.close()
+				log.Error(err)
 				return
 			}
 			n.readC <- req
 		}
 	}()
-	s.resource.activeShards(n)
-	n.ioLoop(stream, s.resource)
+	n.ioLoop(s.ctx, stream, s.resource)
 	s.resource.removeNode(n.addr)
+	s.resource.rangeTables(func(table *shardTable) error {
+		if _, ok := table.getNode(n.addr); !ok {
+			log.Trace(2, "not get node")
+			return nil
+		}
+		log.Trace(2, table.namespace)
+		s.reception.notifyByNamespace(table.namespace, table.marshal())
+		return nil
+	})
 	return nil
 }
 
@@ -196,8 +214,11 @@ func (s *service) Commit(
 	if err := table.commit(); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	meta := &metadpb.Metadata{}
-	table.marshalTo(meta)
+	meta := table.marshal()
 	s.reception.broadcast(meta)
 	return &metadpb.CommitRsp{}, nil
+}
+
+func (s *service) Close() {
+	s.cancel()
 }

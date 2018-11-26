@@ -26,13 +26,16 @@ message RegisterClientRsp {
 
 message RegisterNodeReq {
     enum Type {
-        RegisterShard = 0;
-        UnregisterShard = 1;
-        Heartbeat = 2;
+        PutShardOnline = 0;
+        RegisterShard = 1;
+        UnregisterShard = 2;
+        Heartbeat = 3;
     }
     Type type = 1;
     string addr = 2;
-    string shardID = 3;
+    string namespace = 3;
+    uint32 groupID = 4;
+    uint32 replicaID = 5;
 }
 
 message RegisterNodeRsp {
@@ -41,7 +44,9 @@ message RegisterNodeRsp {
         RemoveShard = 1;
     }
     Type type = 1;
-    string shardID = 2;
+    string namespace = 2;
+    uint32 groupID = 3;
+    uint32 replicaID = 4;
 }
 
 message CreateNamespaceReq {

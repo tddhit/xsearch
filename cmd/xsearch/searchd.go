@@ -63,9 +63,15 @@ var searchdCommand = cli.Command{
 }
 
 func startSearchd(ctx *cli.Context) {
-	var resource *searchd.Resource
+	var (
+		resource *searchd.Resource
+		err      error
+	)
 	if mw.IsWorker() {
-		resource = searchd.NewResource(ctx.String("datadir"))
+		resource, err = searchd.NewResource(ctx.String("datadir"))
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	svc := searchd.NewService(ctx, resource)

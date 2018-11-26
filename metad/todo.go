@@ -91,8 +91,10 @@ func (d *todo) do(wg ...*sync.WaitGroup) (int, error) {
 func (d *todo) buildCreateStages() {
 	d.stages = append(d.stages, func() error {
 		d.from.writeC <- &metadpb.RegisterNodeRsp{
-			Type:    metadpb.RegisterNodeRsp_CreateShard,
-			ShardID: d.shard.id,
+			Type:      metadpb.RegisterNodeRsp_CreateShard,
+			Namespace: d.shard.table.namespace,
+			GroupID:   uint32(d.shard.groupID),
+			ReplicaID: uint32(d.shard.replicaID),
 		}
 		return nil
 	})
@@ -108,8 +110,10 @@ func (d *todo) buildCreateStages() {
 func (d *todo) buildMigrateStages() {
 	d.stages = append(d.stages, func() error {
 		d.to.writeC <- &metadpb.RegisterNodeRsp{
-			Type:    metadpb.RegisterNodeRsp_CreateShard,
-			ShardID: d.shard.id,
+			Type:      metadpb.RegisterNodeRsp_CreateShard,
+			Namespace: d.shard.table.namespace,
+			GroupID:   uint32(d.shard.groupID),
+			ReplicaID: uint32(d.shard.replicaID),
 		}
 		return nil
 	})
@@ -119,8 +123,10 @@ func (d *todo) buildMigrateStages() {
 		d.shard.node = d.to
 		d.shard.next = nil
 		d.from.writeC <- &metadpb.RegisterNodeRsp{
-			Type:    metadpb.RegisterNodeRsp_RemoveShard,
-			ShardID: d.shard.id,
+			Type:      metadpb.RegisterNodeRsp_RemoveShard,
+			Namespace: d.shard.table.namespace,
+			GroupID:   uint32(d.shard.groupID),
+			ReplicaID: uint32(d.shard.replicaID),
 		}
 		return nil
 	})

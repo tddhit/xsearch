@@ -3,8 +3,6 @@ package proxy
 import (
 	"sync"
 
-	"github.com/golang/protobuf/jsonpb"
-
 	"github.com/tddhit/xsearch/proxy/pb"
 )
 
@@ -21,27 +19,24 @@ func NewResource() *Resource {
 	}
 }
 
-func (r *Resource) getOrCreateNode(addr, status string) (*node, error) {
+func (r *Resource) getOrCreateNode(addr string) (_ *node, created bool) {
 	r.RLock()
 	if n, ok := r.nodes[addr]; ok {
 		r.RUnlock()
-		return n, nil
+		return n, false
 	}
 	r.RUnlock()
 
 	r.Lock()
 	if n, ok := r.nodes[addr]; ok {
 		r.Unlock()
-		return n, nil
+		return n, false
 	}
-	n, err := newNode(addr, status)
-	if err != nil {
-		return nil, err
-	}
+	n := newNode(addr)
 	r.nodes[addr] = n
 	r.Unlock()
 
-	return n, nil
+	return n, true
 }
 
 func (r *Resource) getTable(namespace string) (*shardTable, bool) {
@@ -65,11 +60,13 @@ func (r *Resource) updateTable(
 	return t
 }
 
-func (r *Resource) marshalTo(rsp *proxypb.InfoRsp) string {
+func (r *Resource) marshal() *proxypb.InfoRsp {
 	r.RLock()
 	defer r.RUnlock()
 
-	rsp.Tables = make(map[string]*proxypb.InfoRsp_Table)
+	rsp := &proxypb.InfoRsp{
+		Tables: make(map[string]*proxypb.InfoRsp_Table),
+	}
 	for _, t := range r.tables {
 		var (
 			shards []*proxypb.InfoRsp_Shard
@@ -78,7 +75,7 @@ func (r *Resource) marshalTo(rsp *proxypb.InfoRsp) string {
 			for _, replica := range group.replicas {
 				shards = append(shards, &proxypb.InfoRsp_Shard{
 					ID:   replica.id,
-					Node: replica.node.addr + ":" + replica.node.status,
+					Node: replica.node.addr + ":" + replica.node.status.String(),
 				})
 			}
 		}
@@ -89,13 +86,5 @@ func (r *Resource) marshalTo(rsp *proxypb.InfoRsp) string {
 			Shards:        shards,
 		}
 	}
-	marshaler := &jsonpb.Marshaler{
-		EnumsAsInts: true,
-		Indent:      "    ",
-	}
-	if s, err := marshaler.MarshalToString(rsp); err != nil {
-		return err.Error()
-	} else {
-		return s
-	}
+	return rsp
 }

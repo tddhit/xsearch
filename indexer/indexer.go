@@ -435,7 +435,11 @@ func (idx *Indexer) Close() {
 	idx.segmentsMu.RLock()
 	for _, seg := range idx.Segments {
 		seg.persist()
-		seg.close()
+		if seg.NumDocs == 0 {
+			seg.delete()
+		} else {
+			seg.close()
+		}
 	}
 	idx.segmentsMu.RUnlock()
 }

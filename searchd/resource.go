@@ -3,13 +3,17 @@ package searchd
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path"
+	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/tddhit/diskqueue/pb"
+	"github.com/tddhit/tools/log"
 	"github.com/tddhit/xsearch/searchd/pb"
 	"github.com/wangbin/jiebago"
 )
@@ -25,11 +29,58 @@ type Resource struct {
 	shards map[string]*shard
 }
 
-func NewResource(dir string) *Resource {
+func NewResource(dir string) (*Resource, error) {
+	if err := os.MkdirAll(dir, 0755); err != nil && !os.IsExist(err) {
+		log.Error(err)
+		return nil, err
+	}
 	return &Resource{
 		dir:    dir,
 		shards: make(map[string]*shard),
+	}, nil
+}
+
+func (r *Resource) loadShards(
+	addr string,
+	segmenter *jiebago.Segmenter,
+	stopwords map[string]struct{},
+	c diskqueuepb.DiskqueueGrpcClient) error {
+
+	return filepath.Walk(
+		r.dir,
+		func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				log.Error(err)
+				return nil
+			}
+			if !info.IsDir() {
+				return nil
+			}
+			v := strings.Split(info.Name(), ".")
+			if len(v) != 3 {
+				return nil
+			}
+			_, err = r.createShard(info.Name(), addr, segmenter, stopwords, c)
+			if err != nil {
+				log.Error(err)
+				return err
+			}
+			return nil
+		},
+	)
+}
+
+func (r *Resource) rangeShards(f func(*shard) error) (err error) {
+	r.RLock()
+	defer r.RUnlock()
+
+	for _, v := range r.shards {
+		if err = f(v); err != nil {
+			log.Error(err)
+			return err
+		}
 	}
+	return nil
 }
 
 func (r *Resource) getShard(id string) (*shard, bool) {

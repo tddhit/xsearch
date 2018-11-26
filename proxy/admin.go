@@ -21,7 +21,5 @@ func NewAdmin(r *Resource) *admin {
 func (a *admin) Info(ctx context.Context,
 	req *proxypb.InfoReq) (*proxypb.InfoRsp, error) {
 
-	rsp := &proxypb.InfoRsp{}
-	a.resource.marshalTo(rsp)
-	return rsp, nil
+	return a.resource.marshal(), nil
 }
