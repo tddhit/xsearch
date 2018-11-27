@@ -99,7 +99,6 @@ func newSegment(vocabPath, invertPath string, mode int) (*segment, error) {
 }
 
 func validate(invert *mmap.MmapFile) (numDocs, ctime uint64, err error) {
-	log.Trace(2, invert.Size())
 	var tailer int64 = 40
 	if invert.Size() < tailer {
 		return 0, 0, fmt.Errorf("Invalid invert size: %d", invert.Size())
@@ -292,7 +291,6 @@ func (s *segment) persist() error {
 	buf := (*[maxMapSize]byte)(s.invert.Buf(0))
 	checksum := md5.Sum((*buf)[:off])
 	s.invert.WriteAt(checksum[:], off)
-	log.Tracef(2, "checksum:%x", checksum[:])
 	off += 16
 	s.invert.PutUint32At(off, magic)
 	off += 4
@@ -304,12 +302,10 @@ func (s *segment) persist() error {
 	off += 8
 	s.invertList = nil
 	s.docsLength = nil
-	log.Trace(2, "compact start", off)
 	if err := s.invert.Compact(); err != nil {
 		log.Error(err)
 		return err
 	}
-	log.Trace(2, "compact end", s.invert.Size())
 	return nil
 }
 

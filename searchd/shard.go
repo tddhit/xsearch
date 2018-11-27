@@ -133,9 +133,7 @@ func (s *shard) indexLoop(topic, channel string) {
 }
 
 func (s *shard) close() {
-	log.Trace(2, "close")
 	s.cancel()
 	s.wg.Wait()
-	log.Trace(2, "close")
 	s.indexer.Close()
 }

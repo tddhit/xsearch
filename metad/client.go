@@ -53,7 +53,6 @@ func (c *client) writeLoop(ctx context.Context,
 				goto exit
 			}
 			if rsp != nil {
-				log.Trace(2, *(rsp.Table))
 				if err := stream.Send(rsp); err != nil {
 					log.Error(err)
 				}

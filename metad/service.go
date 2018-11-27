@@ -104,10 +104,8 @@ func (s *service) RegisterNode(stream metadpb.Metad_RegisterNodeServer) error {
 	s.resource.removeNode(n.addr)
 	s.resource.rangeTables(func(table *shardTable) error {
 		if _, ok := table.getNode(n.addr); !ok {
-			log.Trace(2, "not get node")
 			return nil
 		}
-		log.Trace(2, table.namespace)
 		s.reception.notifyByNamespace(table.namespace, table.marshal())
 		return nil
 	})

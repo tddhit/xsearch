@@ -87,7 +87,6 @@ func (s *service) watchShardTable(stream metadpb.Metad_RegisterClientClient) {
 			log.Error(err)
 			return
 		}
-		log.Trace(2, *(rsp.Table))
 		table := s.resource.updateTable(
 			rsp.Table.Namespace,
 			int(rsp.Table.ShardNum),

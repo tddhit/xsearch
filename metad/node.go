@@ -87,7 +87,6 @@ func (n *node) readLoop(ctx context.Context, res *resource, rec *reception) {
 			if req == nil || req.Type == metadpb.RegisterNodeReq_Heartbeat {
 				continue
 			}
-			log.Trace(2, *req)
 			shard, err := res.getShard(
 				req.Namespace,
 				int(req.GroupID),
@@ -102,7 +101,6 @@ func (n *node) readLoop(ctx context.Context, res *resource, rec *reception) {
 				log.Errorf("not found namespace %s", req.Namespace)
 				continue
 			}
-			log.Trace(2, shard.id)
 			switch req.Type {
 			case metadpb.RegisterNodeReq_PutShardOnline:
 				if shard.node.addr == req.Addr &&
@@ -184,7 +182,6 @@ func (n *node) close() {
 		close(n.writeC)
 		n.writeC = nil
 	}
-	log.Trace(2, n.status)
 	if n.status == NODE_CLUSTER_ONLINE {
 		n.status = NODE_CLUSTER_OFFLINE
 	}

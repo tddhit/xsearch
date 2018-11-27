@@ -5,7 +5,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/tddhit/tools/log"
 	"github.com/tddhit/xsearch/metad/pb"
 )
 
@@ -56,7 +55,6 @@ func (r *reception) notifyByNamespace(namespace string, meta *metadpb.Metadata) 
 
 	for key, c := range r.clients {
 		if strings.HasPrefix(key, namespace) {
-			log.Trace(2, *meta)
 			select {
 			case c.writeC <- &metadpb.RegisterClientRsp{
 				Table: meta,
