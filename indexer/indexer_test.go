@@ -2,6 +2,8 @@ package indexer
 
 import (
 	"bufio"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"sync"
 	"testing"
@@ -36,7 +38,8 @@ func loadData(path string) (data []string) {
 
 func init() {
 	os.Remove("./test/test.log")
-	log.Init("./test/test.log", log.TRACE)
+	//log.Init("./test/test.log", log.TRACE)
+	log.Init("", log.TRACE)
 	data = loadData("./test/test.txt")
 	smallData = loadData("./test/small.txt")
 	segmenter = &jiebago.Segmenter{}
@@ -86,7 +89,7 @@ func TestMerge(t *testing.T) {
 	idx, err := New(
 		WithID("merge1"),
 		WithDir("./test/merge1"),
-		WithMergeInterval(60*time.Second),
+		WithMergeInterval(30*time.Second),
 		WithMergeNum(100000),
 		WithPersistInterval(10*time.Second),
 	)
@@ -148,5 +151,90 @@ func TestSmallIndex(t *testing.T) {
 		log.Fatal(err)
 	}
 	index(smallData, idx)
+	idx.Close()
+}
+
+func TestSearch(t *testing.T) {
+	os.RemoveAll("./test/index5")
+	idx, err := New(
+		WithID("index5"),
+		WithDir("./test/index5"),
+		WithMergeInterval(0),
+		WithMergeNum(0),
+		WithPersistInterval(1*time.Second),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	id, _ := uuid.NewV4()
+	err = idx.IndexDoc(&xsearchpb.Document{
+		ID: id.String(),
+		Tokens: []*xsearchpb.Token{
+			{Term: "我"},
+			{Term: "是"},
+			{Term: "一个"},
+			{Term: "程序员"},
+		},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	time.Sleep(2 * time.Second)
+	docs, err := idx.Search(&xsearchpb.Query{
+		Tokens: []*xsearchpb.Token{
+			{Term: "程序员"},
+		},
+	}, 0, 10)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Info(len(docs))
+	for _, doc := range docs {
+		log.Info(doc)
+	}
+	idx.Close()
+}
+
+func TestMergeSearch(t *testing.T) {
+	go func() {
+		http.ListenAndServe(":6060", nil)
+	}()
+	os.RemoveAll("./test/index6")
+	idx, err := New(
+		WithID("index6"),
+		WithDir("./test/index6"),
+		WithMergeInterval(5*time.Second),
+		WithMergeNum(10),
+		WithPersistInterval(1*time.Second),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	id, _ := uuid.NewV4()
+	err = idx.IndexDoc(&xsearchpb.Document{
+		ID: id.String(),
+		Tokens: []*xsearchpb.Token{
+			{Term: "我"},
+			{Term: "是"},
+			{Term: "一个"},
+			{Term: "程序员"},
+		},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	time.Sleep(10 * time.Second)
+	docs, err := idx.Search(&xsearchpb.Query{
+		Tokens: []*xsearchpb.Token{
+			{Term: "程序员"},
+		},
+	}, 0, 10)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Info(len(docs))
+	for _, doc := range docs {
+		log.Info(doc)
+	}
 	idx.Close()
 }

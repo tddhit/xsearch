@@ -57,8 +57,11 @@ func (r *reception) notifyByNamespace(namespace string, meta *metadpb.Metadata) 
 	for key, c := range r.clients {
 		if strings.HasPrefix(key, namespace) {
 			log.Trace(2, *meta)
-			c.writeC <- &metadpb.RegisterClientRsp{
+			select {
+			case c.writeC <- &metadpb.RegisterClientRsp{
 				Table: meta,
+			}:
+			default:
 			}
 		}
 	}

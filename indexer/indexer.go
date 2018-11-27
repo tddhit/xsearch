@@ -10,9 +10,11 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
+	//"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/tracymacding/sync"
 
 	"github.com/tddhit/bindex"
 	"github.com/tddhit/tools/log"
@@ -67,11 +69,13 @@ func New(opts ...IndexerOption) (*Indexer, error) {
 		idx.Segments = append(idx.Segments, seg)
 	}
 	if idx.opt.persistInterval > 0 {
+		log.Trace(2, "wg add 1")
 		idx.wg.Add(1)
 		go idx.persistLoop()
 	}
 	if idx.opt.mergeInterval > 0 && idx.opt.mergeNum > 0 {
 		idx.wg.Add(1)
+		log.Trace(2, "wg add 2")
 		go idx.mergeLoop()
 	}
 	return idx, nil
@@ -217,12 +221,14 @@ func (idx *Indexer) persist() {
 	idx.segmentsMu.RUnlock()
 
 	idx.wg.Add(1)
+	log.Trace(2, "wg add 3")
 	go func(seg *segment) {
 		if err := seg.persist(); err != nil {
 			log.Error(err)
 		}
 		log.Infof("Type=Persist\tIndexer=%s\tSegment=%s", idx.opt.id, seg.ID)
 		idx.wg.Done()
+		log.Trace(2, "wg done 3")
 	}(oldSeg)
 
 	if newSeg, err := idx.openSegment(mmap.MODE_CREATE, 0); err != nil {
@@ -252,6 +258,8 @@ func (idx *Indexer) mergeSegments() {
 	needMerge := idx.pickSegments()
 	idx.segmentsMu.RUnlock()
 
+	log.Trace(2, needMerge)
+
 	var newSegs []*segment
 	for _, segs := range needMerge {
 		if seg, err := idx.merge(segs); err != nil {
@@ -263,6 +271,7 @@ func (idx *Indexer) mergeSegments() {
 
 	idx.segmentsMu.RLock()
 	for _, seg := range idx.Segments {
+		log.Trace(2, seg.ID, seg.recycleFlag)
 		if seg.recycleFlag {
 			seg.delete()
 		} else {
@@ -281,19 +290,19 @@ func (idx *Indexer) pickSegments() (res [][]*segment) {
 	)
 	for i, seg := range idx.Segments {
 		merge := false
-		if atomic.LoadInt32(&seg.persistFlag) == 0 {
-			continue
-		}
-		if seg.NumDocs > 0 && seg.NumDocs < idx.opt.mergeNum {
-			seg.recycleFlag = true
-			needMerge = append(needMerge, seg)
-			numDocs += seg.NumDocs
-		} else if seg.NumDocs == 0 {
-			seg.recycleFlag = true
+		if atomic.LoadInt32(&seg.persistFlag) == 1 {
+			if seg.NumDocs > 0 && seg.NumDocs < idx.opt.mergeNum {
+				seg.recycleFlag = true
+				needMerge = append(needMerge, seg)
+				numDocs += seg.NumDocs
+			} else if seg.NumDocs == 0 {
+				seg.recycleFlag = true
+			}
 		}
 		if numDocs >= idx.opt.mergeNum {
 			merge = true
 		}
+		log.Trace(2, i, len(idx.Segments)-1, needMerge)
 		if i == len(idx.Segments)-1 {
 			if len(needMerge) > 1 {
 				merge = true
@@ -398,6 +407,7 @@ func (idx *Indexer) mergeLoop() {
 exit:
 	ticker.Stop()
 	idx.wg.Done()
+	log.Trace(2, "wg done 2")
 }
 
 func (idx *Indexer) persistLoop() {
@@ -413,6 +423,7 @@ func (idx *Indexer) persistLoop() {
 exit:
 	ticker.Stop()
 	idx.wg.Done()
+	log.Trace(2, "wg done 1")
 }
 
 func (idx *Indexer) Close() {

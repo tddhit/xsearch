@@ -61,7 +61,7 @@ func newShard(
 	i, err := indexer.New(
 		indexer.WithDir(dir),
 		indexer.WithID(id),
-		indexer.WithMergeInterval(1200*time.Second),
+		indexer.WithMergeInterval(60*time.Second),
 		indexer.WithPersistInterval(10*time.Second),
 	)
 	if err != nil {

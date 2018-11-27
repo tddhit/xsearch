@@ -93,7 +93,11 @@ func (s *service) RegisterNode(stream metadpb.Metad_RegisterNodeServer) error {
 				log.Error(err)
 				return
 			}
-			n.readC <- req
+			select {
+			case n.readC <- req:
+			case <-s.ctx.Done():
+				return
+			}
 		}
 	}()
 	n.ioLoop(s.ctx, stream, s.resource, s.reception)
