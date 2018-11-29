@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/tddhit/tools/log"
 	"github.com/tddhit/xsearch/pb"
 )
 
@@ -15,17 +16,16 @@ var (
 	plugins []Plugin
 )
 
-type Type int
-
 const (
-	TYPE_ANALYSIS Type = iota
+	TYPE_ANALYSIS int8 = iota
 	TYPE_RERANK
 )
 
 type Plugin interface {
-	Type() Type
+	Type() int8
 	Name() string
 	Priority() int8
+	Init() error
 	Analyze(args *xsearchpb.QueryAnalysisArgs) error
 	Rerank(args *xsearchpb.RerankArgs) error
 	Cleanup() error
@@ -43,21 +43,25 @@ func Init(sodir string) error {
 			}
 			plg, err := plugin.Open(path)
 			if err != nil {
+				log.Error(err)
 				return err
 			}
-			symbol, err := plg.Lookup("New")
+			symbol, err := plg.Lookup("Object")
 			if err != nil {
+				log.Error(err)
 				return err
 			}
-			newSymbol, ok := symbol.(func() (Plugin, error))
+			object, ok := symbol.(Plugin)
 			if !ok {
-				return errors.New("New symbol convert fail.")
-			}
-			p, err := newSymbol()
-			if err != nil {
+				err := errors.New("object convert fail.")
+				log.Error(err)
 				return err
 			}
-			plugins = append(plugins, p)
+			if err := object.Init(); err != nil {
+				log.Error(err)
+				return err
+			}
+			plugins = append(plugins, object)
 			return nil
 		},
 	)
@@ -71,6 +75,11 @@ func Init(sodir string) error {
 }
 
 func Analyze(args *xsearchpb.QueryAnalysisArgs) error {
+	if args == nil || len(args.Queries) == 0 {
+		err := errors.New("there is no query.")
+		log.Error(err)
+		return err
+	}
 	for _, p := range plugins {
 		if p.Type() != TYPE_ANALYSIS {
 			continue

@@ -39,3 +39,8 @@ message RerankArgs {
     Query query = 1;
     repeated Document docs = 2;
 }
+
+enum PluginType {
+    ANALYSIS = 0; 
+    RERANK = 1;
+}

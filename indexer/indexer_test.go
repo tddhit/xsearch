@@ -22,6 +22,12 @@ var (
 	segmenter *jiebago.Segmenter
 )
 
+func assert(b bool, err string) {
+	if !b {
+		log.Fatal(err)
+	}
+}
+
 func loadData(path string) (data []string) {
 	file, err := os.Open(path)
 	if err != nil {
@@ -167,20 +173,31 @@ func TestSearch(t *testing.T) {
 		log.Fatal(err)
 	}
 	id, _ := uuid.NewV4()
-	err = idx.IndexDoc(&xsearchpb.Document{
-		ID: id.String(),
-		Tokens: []*xsearchpb.Token{
+	docs := [][]*xsearchpb.Token{
+		{
 			{Term: "我"},
 			{Term: "是"},
 			{Term: "一个"},
 			{Term: "程序员"},
 		},
-	})
-	if err != nil {
-		log.Fatal(err)
+		{
+			{Term: "我"},
+			{Term: "在"},
+			{Term: "用"},
+			{Term: "github"},
+		},
+	}
+	for i := range docs {
+		err := idx.IndexDoc(&xsearchpb.Document{
+			ID:     id.String(),
+			Tokens: docs[i],
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 	time.Sleep(2 * time.Second)
-	docs, err := idx.Search(&xsearchpb.Query{
+	res, err := idx.Search(&xsearchpb.Query{
 		Tokens: []*xsearchpb.Token{
 			{Term: "程序员"},
 		},
@@ -188,10 +205,16 @@ func TestSearch(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Info(len(docs))
-	for _, doc := range docs {
-		log.Info(doc)
+	assert(len(res) == 1, "search '程序员' fail")
+	res, err = idx.Search(&xsearchpb.Query{
+		Tokens: []*xsearchpb.Token{
+			{Term: "github"},
+		},
+	}, 0, 10)
+	if err != nil {
+		log.Fatal(err)
 	}
+	assert(len(res) == 1, "search 'github' fail")
 	idx.Close()
 }
 

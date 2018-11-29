@@ -89,14 +89,17 @@ func newShard(
 }
 
 func (s *shard) indexLoop(topic, channel string) {
+	log.Trace(2, "indexLoop start")
 	for {
 		rsp, err := s.diskq.Pop(s.ctx, &diskqueuepb.PopReq{
 			Topic:   topic,
 			Channel: channel,
 		})
 		if err != nil {
+			log.Trace(2, "!!!!!!!!!!!!!!!!!!")
 			log.Error(err)
-			break
+			time.Sleep(time.Second)
+			continue
 		}
 		msg := rsp.GetMessage()
 		if msg == nil {
@@ -130,6 +133,7 @@ func (s *shard) indexLoop(topic, channel string) {
 			}
 		}
 	}
+	log.Trace(2, "indexLoop end")
 }
 
 func (s *shard) close() {
