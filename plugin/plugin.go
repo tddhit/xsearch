@@ -2,11 +2,8 @@ package plugin
 
 import (
 	"errors"
-	"os"
-	"path/filepath"
-	"plugin"
+	"fmt"
 	"sort"
-	"strings"
 
 	"github.com/tddhit/tools/log"
 	"github.com/tddhit/xsearch/pb"
@@ -14,6 +11,7 @@ import (
 
 var (
 	plugins []Plugin
+	m       = make(map[string]struct{})
 )
 
 const (
@@ -25,49 +23,19 @@ type Plugin interface {
 	Type() int8
 	Name() string
 	Priority() int8
-	Init() error
 	Analyze(args *xsearchpb.QueryAnalysisArgs) error
 	Rerank(args *xsearchpb.RerankArgs) error
 	Cleanup() error
 }
 
-func Init(sodir string) error {
-	err := filepath.Walk(
-		sodir,
-		func(path string, info os.FileInfo, err error) error {
-			if info == nil {
-				return nil
-			}
-			if !strings.HasSuffix(info.Name(), ".so") {
-				return nil
-			}
-			plg, err := plugin.Open(path)
-			if err != nil {
-				log.Error(err)
-				return err
-			}
-			symbol, err := plg.Lookup("Object")
-			if err != nil {
-				log.Error(err)
-				return err
-			}
-			object, ok := symbol.(Plugin)
-			if !ok {
-				err := errors.New("object convert fail.")
-				log.Error(err)
-				return err
-			}
-			if err := object.Init(); err != nil {
-				log.Error(err)
-				return err
-			}
-			plugins = append(plugins, object)
-			return nil
-		},
-	)
-	if err != nil {
+func Register(p Plugin) error {
+	if _, ok := m[p.Name()]; ok {
+		err := fmt.Errorf("plugin(%s) already exist.", p.Name())
+		log.Error(err)
 		return err
 	}
+	m[p.Name()] = struct{}{}
+	plugins = append(plugins, p)
 	sort.SliceStable(plugins, func(i, j int) bool {
 		return plugins[i].Priority() < plugins[j].Priority()
 	})

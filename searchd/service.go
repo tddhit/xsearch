@@ -1,16 +1,12 @@
 package searchd
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"io"
-	"os"
-	"strings"
 	"time"
 
 	"github.com/urfave/cli"
-	"github.com/wangbin/jiebago"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -24,13 +20,11 @@ import (
 )
 
 type service struct {
-	addr      string
-	resource  *Resource
-	metad     metadpb.MetadGrpcClient
-	diskq     diskqueuepb.DiskqueueGrpcClient
-	segmenter *jiebago.Segmenter
-	stopwords map[string]struct{}
-	exitC     chan struct{}
+	addr     string
+	resource *Resource
+	metad    metadpb.MetadGrpcClient
+	diskq    diskqueuepb.DiskqueueGrpcClient
+	exitC    chan struct{}
 }
 
 func NewService(ctx *cli.Context, r *Resource) *service {
@@ -47,35 +41,12 @@ func NewService(ctx *cli.Context, r *Resource) *service {
 		log.Fatal(err)
 	}
 	diskq := diskqueuepb.NewDiskqueueGrpcClient(conn)
-	segmenter := &jiebago.Segmenter{}
-	if err := segmenter.LoadDictionary(ctx.String("dict")); err != nil {
-		log.Fatal(err)
-	}
-	if err := segmenter.LoadUserDictionary(ctx.String("userdict")); err != nil {
-		log.Fatal(err)
-	}
-	stopwords := make(map[string]struct{})
-	file, err := os.Open(ctx.String("stopdict"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
-	rd := bufio.NewReader(file)
-	for {
-		line, err := rd.ReadString('\n')
-		if err != nil || io.EOF == err {
-			break
-		}
-		stopwords[strings.TrimSpace(line)] = struct{}{}
-	}
 	s := &service{
-		addr:      ctx.String("addr"),
-		resource:  r,
-		metad:     metad,
-		diskq:     diskq,
-		segmenter: segmenter,
-		stopwords: stopwords,
-		exitC:     make(chan struct{}),
+		addr:     ctx.String("addr"),
+		resource: r,
+		metad:    metad,
+		diskq:    diskq,
+		exitC:    make(chan struct{}),
 	}
 	if err := r.loadShards(s.addr, segmenter, stopwords, diskq); err != nil {
 		log.Fatal(err)

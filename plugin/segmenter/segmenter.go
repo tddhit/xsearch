@@ -1,8 +1,6 @@
-package main
+package plugin
 
 import (
-	"errors"
-
 	"github.com/yanyiwu/gojieba"
 
 	"github.com/tddhit/tools/log"
@@ -10,15 +8,22 @@ import (
 	"github.com/tddhit/xsearch/plugin"
 )
 
-var Object Segmenter
+func init() {
+	s, _ := newSegmenter()
+	if err := plugin.Register(s); err != nil {
+		log.Fatal(err)
+	}
+}
 
 type Segmenter struct {
 	*gojieba.Jieba
 }
 
-func (s *Segmenter) Init() error {
-	s.Jieba = gojieba.NewJieba()
-	return nil
+func newSegmenter() (*Segmenter, error) {
+	s := &Segmenter{
+		Jieba: gojieba.NewJieba(),
+	}
+	return s, nil
 }
 
 func (s *Segmenter) Type() int8 {

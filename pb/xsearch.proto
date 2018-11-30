@@ -9,6 +9,7 @@ message Token {
 message Query {
     string raw = 1;
     repeated Token tokens = 2;
+    repeated string tags = 3;
 }
 
 message Document {

@@ -61,9 +61,6 @@ func NewService(ctx *cli.Context, r *Resource) *service {
 			log.Fatal(err)
 		}
 	}
-	if err := plugin.Init(ctx.String("sodir")); err != nil {
-		log.Fatal(err)
-	}
 	return s
 }
 
