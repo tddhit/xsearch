@@ -254,7 +254,6 @@ func (idx *Indexer) mergeSegments() {
 	needMerge := idx.pickSegments()
 	idx.segmentsMu.RUnlock()
 
-
 	var newSegs []*segment
 	for _, segs := range needMerge {
 		if seg, err := idx.merge(segs); err != nil {
@@ -319,32 +318,19 @@ func (idx *Indexer) merge(segs []*segment) (*segment, error) {
 	}
 	cursors := make([]*bindex.Cursor, k)
 	var (
-		max    []byte
 		offset int64
 	)
 	for _, seg := range segs {
 		newSeg.NumDocs += seg.NumDocs
-		c := seg.vocab.NewCursor()
-		key, _ := c.Last()
-		if max == nil || bytes.Compare(key, max) > 0 {
-			max = key
-		}
 	}
-	max = append(max, '0')
-	input := func(i int) interface{} {
-		if i >= k {
-			return max
-		}
+	input := func(i int) (interface{}, error) {
 		if cursors[i] == nil {
 			cursors[i] = segs[i].vocab.NewCursor()
 			key, _ := cursors[i].First()
-			return key
+			return key, nil
 		}
 		key, _ := cursors[i].Next()
-		if key == nil {
-			return max
-		}
-		return key
+		return key, nil
 	}
 	output := func(k interface{}) error {
 		if newSeg.vocab.Get(k.([]byte)) != nil {
@@ -383,7 +369,7 @@ func (idx *Indexer) merge(segs []*segment) (*segment, error) {
 	compare := func(a, b interface{}) int {
 		return bytes.Compare(a.([]byte), b.([]byte))
 	}
-	util.KMerge(len(segs), []byte(""), max, input, output, compare)
+	util.KMerge(len(segs), input, output, compare)
 	return newSeg, nil
 }
 
