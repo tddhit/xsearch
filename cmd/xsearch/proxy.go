@@ -43,9 +43,9 @@ var proxyCommand = cli.Command{
 			Usage: "Business name separated by a comma. i.e. faq,news",
 		},
 		cli.StringFlag{
-			Name:  "sodir",
-			Usage: "query analysis and rerank algorithm plugin directory",
-			Value: "./plugin",
+			Name:  "plugins",
+			Usage: "query analysis or rerank algorithm plugin",
+			Value: "preprocessor,segmenter",
 		},
 	},
 }

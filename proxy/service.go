@@ -61,6 +61,16 @@ func NewService(ctx *cli.Context, r *Resource) *service {
 			log.Fatal(err)
 		}
 	}
+	plugins := strings.Split(ctx.String("plugins"), ",")
+	for _, name := range plugins {
+		p, ok := plugin.Get(name)
+		if !ok {
+			continue
+		}
+		if err := p.Init(); err != nil {
+			log.Fatal(err)
+		}
+	}
 	return s
 }
 
@@ -149,12 +159,19 @@ func (s *service) IndexDoc(
 	}
 	key := util.Hash(id[:])
 	groupID := key % uint64(table.shardNum)
+	segmenter, _ := plugin.Get("segmenter")
+	query := &xsearchpb.QueryAnalysisArgs{
+		Queries: []*xsearchpb.Query{
+			{Raw: req.Doc.Content},
+		},
+	}
+	segmenter.Analyze(query)
 	data, err := proto.Marshal(&xsearchpb.Command{
 		Type: xsearchpb.Command_INDEX,
 		DocOneof: &xsearchpb.Command_Doc{
 			Doc: &xsearchpb.Document{
-				ID:      id.String(),
-				Content: req.Doc.Content,
+				ID:     id.String(),
+				Tokens: query.Queries[0].Tokens,
 			},
 		},
 	})
@@ -306,5 +323,8 @@ func (s *service) Search(
 	}
 	log.Infof("Type=Search\tTraceID=%s\tQuery=%s",
 		req.TraceID, req.Query.Raw)
-	return &proxypb.SearchRsp{Docs: finalDocs}, nil
+	return &proxypb.SearchRsp{
+		Query: args.Queries[0],
+		Docs:  finalDocs,
+	}, nil
 }

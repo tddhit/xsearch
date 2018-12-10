@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/wangbin/jiebago"
 
 	"github.com/tddhit/diskqueue/pb"
 	"github.com/tddhit/tools/log"
@@ -23,8 +22,6 @@ type shard struct {
 	groupID   int
 	replicaID int
 	indexer   *indexer.Indexer
-	segmenter *jiebago.Segmenter
-	stopwords map[string]struct{}
 	diskq     diskqueuepb.DiskqueueGrpcClient
 	ctx       context.Context
 	cancel    context.CancelFunc
@@ -35,8 +32,6 @@ func newShard(
 	id string,
 	dir string,
 	addr string,
-	segmenter *jiebago.Segmenter,
-	stopwords map[string]struct{},
 	c diskqueuepb.DiskqueueGrpcClient) (*shard, error) {
 
 	v := strings.Split(id, ".")
@@ -73,8 +68,6 @@ func newShard(
 		groupID:   groupID,
 		replicaID: replicaID,
 		indexer:   i,
-		segmenter: segmenter,
-		stopwords: stopwords,
 		diskq:     c,
 	}
 	s.ctx, s.cancel = context.WithCancel(context.Background())
@@ -89,14 +82,12 @@ func newShard(
 }
 
 func (s *shard) indexLoop(topic, channel string) {
-	log.Trace(2, "indexLoop start")
 	for {
 		rsp, err := s.diskq.Pop(s.ctx, &diskqueuepb.PopReq{
 			Topic:   topic,
 			Channel: channel,
 		})
 		if err != nil {
-			log.Trace(2, "!!!!!!!!!!!!!!!!!!")
 			log.Error(err)
 			time.Sleep(time.Second)
 			continue
@@ -114,14 +105,6 @@ func (s *shard) indexLoop(topic, channel string) {
 		switch cmd.Type {
 		case xsearchpb.Command_INDEX:
 			if doc, ok := cmd.DocOneof.(*xsearchpb.Command_Doc); ok {
-				for term := range s.segmenter.Cut(doc.Doc.Content, true) {
-					if _, ok := s.stopwords[term]; !ok {
-						doc.Doc.Tokens = append(
-							doc.Doc.Tokens,
-							&xsearchpb.Token{Term: term},
-						)
-					}
-				}
 				if err := s.indexer.IndexDoc(doc.Doc); err == nil {
 					log.Infof("Type=IndexDoc\tDocID=%s", doc.Doc.ID)
 				}
@@ -133,7 +116,6 @@ func (s *shard) indexLoop(topic, channel string) {
 			}
 		}
 	}
-	log.Trace(2, "indexLoop end")
 }
 
 func (s *shard) close() {

@@ -15,7 +15,6 @@ import (
 	"github.com/tddhit/diskqueue/pb"
 	"github.com/tddhit/tools/log"
 	"github.com/tddhit/xsearch/metad/pb"
-	"github.com/tddhit/xsearch/pb"
 	"github.com/tddhit/xsearch/searchd/pb"
 )
 
@@ -48,7 +47,7 @@ func NewService(ctx *cli.Context, r *Resource) *service {
 		diskq:    diskq,
 		exitC:    make(chan struct{}),
 	}
-	if err := r.loadShards(s.addr, segmenter, stopwords, diskq); err != nil {
+	if err := r.loadShards(s.addr, diskq); err != nil {
 		log.Fatal(err)
 	}
 	if err := s.registerNode(s.addr); err != nil {
@@ -95,8 +94,6 @@ func (s *service) waitCommand(addr string, stream metadpb.Metad_RegisterNodeClie
 			_, err := s.resource.createShard(
 				fmt.Sprintf("%s.%d.%d", rsp.Namespace, rsp.GroupID, rsp.ReplicaID),
 				s.addr,
-				s.segmenter,
-				s.stopwords,
 				s.diskq,
 			)
 			if err != nil {
@@ -159,14 +156,6 @@ func (s *service) Search(ctx context.Context,
 	req *searchdpb.SearchReq) (*searchdpb.SearchRsp, error) {
 
 	shard := ctx.Value(shardContextKey).(*shard)
-	for term := range s.segmenter.Cut(req.Query.Raw, true) {
-		if _, ok := s.stopwords[term]; !ok {
-			req.Query.Tokens = append(
-				req.Query.Tokens,
-				&xsearchpb.Token{Term: term},
-			)
-		}
-	}
 	docs, err := shard.indexer.Search(req.Query, req.Start, int32(req.Count))
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())

@@ -15,7 +15,6 @@ import (
 	"github.com/tddhit/diskqueue/pb"
 	"github.com/tddhit/tools/log"
 	"github.com/tddhit/xsearch/searchd/pb"
-	"github.com/wangbin/jiebago"
 )
 
 var (
@@ -41,12 +40,7 @@ func NewResource(dir string) (*Resource, error) {
 	}, nil
 }
 
-func (r *Resource) loadShards(
-	addr string,
-	segmenter *jiebago.Segmenter,
-	stopwords map[string]struct{},
-	c diskqueuepb.DiskqueueGrpcClient) error {
-
+func (r *Resource) loadShards(addr string, c diskqueuepb.DiskqueueGrpcClient) error {
 	return filepath.Walk(
 		r.dir,
 		func(path string, info os.FileInfo, err error) error {
@@ -61,7 +55,7 @@ func (r *Resource) loadShards(
 			if len(v) != 3 {
 				return nil
 			}
-			_, err = r.createShard(info.Name(), addr, segmenter, stopwords, c)
+			_, err = r.createShard(info.Name(), addr, c)
 			if err != nil {
 				log.Error(err)
 				return err
@@ -95,8 +89,6 @@ func (r *Resource) getShard(id string) (*shard, bool) {
 func (r *Resource) createShard(
 	id string,
 	addr string,
-	segmenter *jiebago.Segmenter,
-	stopwords map[string]struct{},
 	c diskqueuepb.DiskqueueGrpcClient) (*shard, error) {
 
 	r.Lock()
@@ -105,7 +97,7 @@ func (r *Resource) createShard(
 	if s, ok := r.shards[id]; ok {
 		return s, errAlreadyExists
 	}
-	s, err := newShard(id, path.Join(r.dir, id), addr, segmenter, stopwords, c)
+	s, err := newShard(id, path.Join(r.dir, id), addr, c)
 	if err != nil {
 		return nil, err
 	}

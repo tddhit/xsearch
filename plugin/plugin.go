@@ -11,7 +11,7 @@ import (
 
 var (
 	plugins []Plugin
-	m       = make(map[string]struct{})
+	m       = make(map[string]Plugin)
 )
 
 const (
@@ -20,6 +20,7 @@ const (
 )
 
 type Plugin interface {
+	Init() error
 	Type() int8
 	Name() string
 	Priority() int8
@@ -34,12 +35,17 @@ func Register(p Plugin) error {
 		log.Error(err)
 		return err
 	}
-	m[p.Name()] = struct{}{}
+	m[p.Name()] = p
 	plugins = append(plugins, p)
 	sort.SliceStable(plugins, func(i, j int) bool {
 		return plugins[i].Priority() < plugins[j].Priority()
 	})
 	return nil
+}
+
+func Get(name string) (Plugin, bool) {
+	p, ok := m[name]
+	return p, ok
 }
 
 func Analyze(args *xsearchpb.QueryAnalysisArgs) error {

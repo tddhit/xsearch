@@ -21,77 +21,73 @@ const (
 )
 
 func init() {
-	var (
-		c   *Classifier
-		err error
-	)
-	if c, err = newClassifier(); err != nil {
-		log.Fatal(err)
-	}
-	if err = plugin.Register(c); err != nil {
+	if err := plugin.Register(&classifier{}); err != nil {
 		log.Fatal(err)
 	}
 }
 
-type Classifier struct {
+type classifier struct {
 	session       *tensorflow.Session
 	graph         *tensorflow.Graph
 	tags          []string
 	embedding     map[rune][]float32
 	embeddingSize int
 	maxLength     int
+	initial       bool
 }
 
-func newClassifier() (*Classifier, error) {
+func (c *classifier) Init() error {
 	data, err := ioutil.ReadFile("./classifier.model")
 	if err != nil {
 		log.Error(err)
-		return nil, err
+		return err
 	}
 	graph := tensorflow.NewGraph()
 	if err := graph.Import(data, ""); err != nil {
 		log.Error(err)
-		return nil, err
+		return err
 	}
 	session, err := tensorflow.NewSession(graph, nil)
 	if err != nil {
 		log.Error(err)
-		return nil, err
+		return err
 	}
 	tags, err := loadTags("./tags.txt")
 	if err != nil {
 		log.Error(err)
-		return nil, err
+		return err
 	}
 	embedding, err := loadEmbedding("./embedding.txt")
 	if err != nil {
 		log.Error(err)
-		return nil, err
+		return err
 	}
-	c := &Classifier{
-		graph:         graph,
-		session:       session,
-		tags:          tags,
-		embedding:     embedding,
-		embeddingSize: 32,
-		maxLength:     197,
-	}
-	return c, nil
+	c.initial = true
+	c.graph = graph
+	c.session = session
+	c.tags = tags
+	c.embedding = embedding
+	c.embeddingSize = 32
+	c.maxLength = 197
+	return nil
 }
 
-func (c *Classifier) Type() int8 {
+func (c *classifier) Type() int8 {
 	return plugin.TYPE_ANALYSIS
 }
 
-func (c *Classifier) Name() string {
+func (c *classifier) Name() string {
 	return "classifier"
 }
 
-func (c *Classifier) Priority() int8 {
-	return 2
+func (c *classifier) Priority() int8 {
+	return 3
 }
 
-func (c *Classifier) Analyze(args *xsearchpb.QueryAnalysisArgs) error {
+func (c *classifier) Analyze(args *xsearchpb.QueryAnalysisArgs) error {
+	if !c.initial {
+		return nil
+	}
 	words := []rune(args.Queries[0].Raw)
 	embedding := c.getEmbedding(words)
 	matrix := [][][]float32{embedding}
@@ -141,11 +137,11 @@ func topKIndex(scores []float32, k int) []int {
 	return res
 }
 
-func (c *Classifier) Rerank(args *xsearchpb.RerankArgs) error {
+func (c *classifier) Rerank(args *xsearchpb.RerankArgs) error {
 	return nil
 }
 
-func (c *Classifier) Cleanup() error {
+func (c *classifier) Cleanup() error {
 	if err := c.session.Close(); err != nil {
 		log.Error(err)
 		return err
@@ -153,7 +149,7 @@ func (c *Classifier) Cleanup() error {
 	return nil
 }
 
-func (c *Classifier) getEmbedding(words []rune) [][]float32 {
+func (c *classifier) getEmbedding(words []rune) [][]float32 {
 	embedding := make([][]float32, c.maxLength)
 	for i := range embedding {
 		embedding[i] = make([]float32, c.embeddingSize)

@@ -9,36 +9,38 @@ import (
 )
 
 func init() {
-	s, _ := newSegmenter()
-	if err := plugin.Register(s); err != nil {
+	if err := plugin.Register(&segmenter{}); err != nil {
 		log.Fatal(err)
 	}
 }
 
-type Segmenter struct {
+type segmenter struct {
 	*gojieba.Jieba
+	initial bool
 }
 
-func newSegmenter() (*Segmenter, error) {
-	s := &Segmenter{
-		Jieba: gojieba.NewJieba(),
-	}
-	return s, nil
+func (s *segmenter) Init() error {
+	s.initial = true
+	s.Jieba = gojieba.NewJieba()
+	return nil
 }
 
-func (s *Segmenter) Type() int8 {
+func (s *segmenter) Type() int8 {
 	return plugin.TYPE_ANALYSIS
 }
 
-func (s *Segmenter) Name() string {
-	return "Segmenter"
+func (s *segmenter) Name() string {
+	return "segmenter"
 }
 
-func (s *Segmenter) Priority() int8 {
-	return 1
+func (s *segmenter) Priority() int8 {
+	return 2
 }
 
-func (s *Segmenter) Analyze(args *xsearchpb.QueryAnalysisArgs) error {
+func (s *segmenter) Analyze(args *xsearchpb.QueryAnalysisArgs) error {
+	if !s.initial {
+		return nil
+	}
 	for _, term := range s.Cut(args.Queries[0].Raw, true) {
 		args.Queries[0].Tokens = append(
 			args.Queries[0].Tokens,
@@ -48,10 +50,10 @@ func (s *Segmenter) Analyze(args *xsearchpb.QueryAnalysisArgs) error {
 	return nil
 }
 
-func (s *Segmenter) Rerank(args *xsearchpb.RerankArgs) error {
+func (s *segmenter) Rerank(args *xsearchpb.RerankArgs) error {
 	return nil
 }
 
-func (s *Segmenter) Cleanup() error {
+func (s *segmenter) Cleanup() error {
 	return nil
 }

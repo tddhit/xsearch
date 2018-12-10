@@ -13,8 +13,7 @@ import (
 )
 
 func init() {
-	p := New()
-	if err := plugin.Register(p); err != nil {
+	if err := plugin.Register(&preprocessor{}); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -22,24 +21,19 @@ func init() {
 type preprocessor struct {
 	t2s       map[rune]rune //繁转简
 	stopwords map[rune]struct{}
+	initial   bool
 }
 
-func New() *preprocessor {
-	return &preprocessor{
-		t2s:       make(map[rune]rune),
-		stopwords: make(map[rune]struct{}),
-	}
-}
-
-func (p *preprocessor) Init(conf string) error {
-
+func (p *preprocessor) Init() error {
+	p.initial = true
+	p.t2s = make(map[rune]rune)
+	p.stopwords = make(map[rune]struct{})
 	for i := range trad {
 		p.t2s[trad[i]] = simp[i]
 	}
-
-	file, err := os.Open(path)
+	file, err := os.Open("./stopwords.dict")
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer file.Close()
 
@@ -64,6 +58,9 @@ func (p *preprocessor) Priority() int8 {
 }
 
 func (p *preprocessor) Analyze(args *xsearchpb.QueryAnalysisArgs) error {
+	if !p.initial {
+		return nil
+	}
 	query := args.Queries[0].Raw
 	query = strings.Replace(query, "\\n", "\n", -1)
 	query = strings.Replace(query, "\n", "", -1)
