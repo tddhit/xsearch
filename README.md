@@ -32,9 +32,9 @@ This will retrieve the xsearch code and the dependent libraries, and build the `
 
 ```
 $ cd $GOPATH/src/github.com/tddhit/diskqueue/cmd/diskqueue
-$ ./diskqueue service --addr 127.0.0.1:9000 --cluster-addr 127.0.0.1:9010 --id node1 --mode cluster --datadir ./data1 --pidpath ./diskqueue1.pid
-$ ./diskqueue service --addr 127.0.0.1:9100 --cluster-addr 127.0.0.1:9110 --id node2 --mode cluster --datadir ./data2 --leader grpc://127.0.0.1:9000 --pidpath ./diskqueue2.pid
-$ ./diskqueue service --addr 127.0.0.1:9200 --cluster-addr 127.0.0.1:9210 --id node3 --mode cluster --datadir ./data3 --leader grpc://127.0.0.1:9000 --pidpath ./diskqueue3.pid
+$ ./diskqueue service --addr 127.0.0.1:9000 --cluster-addr 127.0.0.1:9010 --id node1 --datadir ./data1 --pidpath ./diskqueue1.pid
+$ ./diskqueue service --addr 127.0.0.1:9100 --cluster-addr 127.0.0.1:9110 --id node2 --datadir ./data2 --leader grpc://127.0.0.1:9000 --pidpath ./diskqueue2.pid
+$ ./diskqueue service --addr 127.0.0.1:9200 --cluster-addr 127.0.0.1:9210 --id node3 --datadir ./data3 --leader grpc://127.0.0.1:9000 --pidpath ./diskqueue3.pid
 ```
 
 #### Starting metad service
@@ -47,14 +47,14 @@ $ ./xsearch metad
 #### Starting searchd service
 
 ```
-$ ./xsearch searchd --addr 127.0.0.1:10200 --admin 127.0.0.1:10201 --datadir ./searchd1_data --pidpath ./searchd1.pid --metad grpc://127.0.0.1:10100 --diskqueue diskqueue://127.0.0.1:9000,127.0.0.1:9100,127.0.0.1:9200/leader
-$ ./xsearch searchd --addr 127.0.0.1:10210 --admin 127.0.0.1:10211 --datadir ./searchd2_data --pidpath ./searchd2.pid --metad grpc://127.0.0.1:10100 --diskqueue diskqueue://127.0.0.1:9000,127.0.0.1:9100,127.0.0.1:9200/leader 
+./xsearch searchd --addr 127.0.0.1:10200 --admin 127.0.0.1:10201 --datadir ./searchd1_data --pidpath ./searchd1.pid --metad grpc://127.0.0.1:10100 --diskqueue diskqueue://127.0.0.1:9000,127.0.0.1:9100,127.0.0.1:9200/leader
+./xsearch searchd --addr 127.0.0.1:10210 --admin 127.0.0.1:10211 --datadir ./searchd2_data --pidpath ./searchd2.pid --metad grpc://127.0.0.1:10100 --diskqueue diskqueue://127.0.0.1:9000,127.0.0.1:9100,127.0.0.1:9200/leader 
 ```
 
 #### Starting proxy service
 
 ```
-$ ./xsearch proxy --addr 127.0.0.1:10300 --admin 127.0.0.1:10301 --namespaces news --pidpath ./proxy.pid --metad grpc://127.0.0.1:10100 --diskqueue diskqueue://127.0.0.1:9000,127.0.0.1:9100,127.0.0.1:9200/leader
+./xsearch proxy --addr 127.0.0.1:10300 --admin 127.0.0.1:10301 --namespaces news --pidpath ./proxy.pid --metad grpc://127.0.0.1:10100 --diskqueue diskqueue://127.0.0.1:9000,127.0.0.1:9100,127.0.0.1:9200/leader
 ```
 
 #### Creating a namespace
